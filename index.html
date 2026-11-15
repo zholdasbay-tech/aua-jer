@@ -150,7 +150,7 @@ summary{cursor:pointer;font:10px var(--mono);letter-spacing:.22em;text-transform
     <label for="base">Base</label>
     <select id="base"><option value="night">NASA Black Marble</option><option value="gibs">NASA Blue Marble</option><option value="osm">OpenStreetMap</option></select>
     <label for="opa">Radar</label><input id="opa" type="range" min="0" max="100" value="100" aria-label="Radar layer opacity">
-    <label><input id="lab" type="checkbox" checked> Names</label>
+    <label><input id="lab" type="checkbox" checked> Cities</label>
   </div>
   <div id="hudtxt"><span id="coordtxt"></span><span id="att"></span></div>
   <div id="busy" role="status" aria-live="polite" hidden></div>
@@ -232,7 +232,7 @@ summary{cursor:pointer;font:10px var(--mono);letter-spacing:.22em;text-transform
       <li>Radar: NISAR L2 GCOV browse images (HH and HV), streamed live from NASA's Alaska Satellite Facility DAAC and found with the ASF Search API.</li>
       <li>Browse images are about 200 m per pixel and 8-bit, scaled for display. The change map is a relative difference after removing the scene-wide median. It is not calibrated backscatter in dB. Point charts are relative to each scene's median for the same reason, so a change across the whole scene cannot be told apart from display scaling.</li>
       <li>Weather: NASA POWER daily values (MERRA-2 and GEOS) at the clicked coordinates. It is a model grid, not a station.</li>
-      <li>Base maps: NASA GIBS Black Marble, Blue Marble and reference labels, or OpenStreetMap.</li>
+      <li>Base maps: NASA GIBS Black Marble and Blue Marble, or OpenStreetMap. City markers are approximate.</li>
       <li>Next step: read the full-resolution GCOV HDF5 products for calibrated gamma-nought, and add ground readings from the Aua phone-barometer network.</li>
     </ul></div>
   </details>
@@ -259,7 +259,7 @@ var BASES={
   gibs:{url:GIBS+'BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg',max:8,dim:0.5,att:'Base: NASA GIBS Blue Marble'},
   osm:{url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',max:12,dim:0.55,att:'Base: © OpenStreetMap contributors'}
 };
-var LABELS={url:GIBS+'Reference_Labels_15m/default/GoogleMapsCompatible_Level13/{z}/{y}/{x}.png',max:10,dim:1};
+var CITIES=[['Astana',51.13,71.43],['Karaganda',49.8,73.1],['Temirtau',50.05,72.96],['Kokshetau',53.28,69.39],['Kostanay',53.21,63.63],['Rudny',52.97,63.12],['Pavlodar',52.29,76.97],['Ekibastuz',51.73,75.32],['Atbasar',51.82,68.36],['Stepnogorsk',52.35,71.89],['Korgalzhyn',50.58,70.02],['Akkol',51.99,70.94],['Ereymentau',51.62,73.1],['Osakarovka',50.56,72.57],['Arkalyk',50.25,66.91],['Petropavl',54.87,69.14],['Semey',50.41,80.23],['Oskemen',49.95,82.61],['Zhezkazgan',47.78,67.71],['Balkhash',46.85,74.98],['Taldykorgan',45.02,78.37],['Almaty',43.24,76.89],['Shymkent',42.32,69.6],['Kyzylorda',44.85,65.51],['Aralsk',46.8,61.67],['Aktobe',50.28,57.21],['Atyrau',47.11,51.92],['Siem Reap',13.36,103.86],['Battambang',13.1,103.2],['Kampong Thom',12.71,104.89],['Phnom Penh',11.56,104.92]];
 var PRESETS=[
   {n:'Astana and the Akmola wheat belt, Kazakhstan',lat:51.13,lon:71.43},
   {n:'Lake Tengiz and Korgalzhyn wetlands, Kazakhstan',lat:50.45,lon:69.0},
@@ -350,9 +350,9 @@ function loadScene(i){
     if(b.approx){
       /* No KML: the footprint polygon covers only the opaque part of the image, so stretch it to the full frame. */
       var bx0=sw,bx1=0,by0=sh,by1=0;
-      for(j=0;j<sh;j+=2)for(i2=0;i2<sw;i2+=2){if(sd[(j*sw+i2)*4+3]>127){if(i2<bx0)bx0=i2;if(i2>bx1)bx1=i2;if(j<by0)by0=j;if(j>by1)by1=j;}}
+      for(j=0;j<sh;j++)for(i2=0;i2<sw;i2++){if(sd[(j*sw+i2)*4+3]>127){if(i2<bx0)bx0=i2;if(i2>bx1)bx1=i2;if(j<by0)by0=j;if(j>by1)by1=j;}}
       if(bx1>bx0&&by1>by0){
-        var dx=(b.e-b.w)/(bx1-bx0+2),dy=(b.n-b.s)/(by1-by0+2);
+        var dx=(b.e-b.w)/(bx1-bx0+1),dy=(b.n-b.s)/(by1-by0+1);
         sc.b=b={w:b.w-bx0*dx,e:b.e+(sw-1-bx1)*dx,n:b.n+by0*dy,s:b.s-(sh-1-by1)*dy,approx:true};
       }
     }
@@ -507,7 +507,15 @@ function draw(){
       });
     }
   }
-  if(S.labels)drawTiles(LABELS);
+  if(S.labels){
+    ctx.font='10px "JetBrains Mono",ui-monospace,Menlo,monospace';ctx.textBaseline='middle';ctx.textAlign='left';
+    CITIES.forEach(function(c){
+      var k=scr(c[2],c[1]);
+      if(k.x<-80||k.y<-20||k.x>VW+20||k.y>VH+20)return;
+      ctx.fillStyle='#000';ctx.fillRect(k.x-3,k.y-3,6,6);ctx.fillStyle='#fff';ctx.fillRect(k.x-2,k.y-2,4,4);
+      ctx.shadowColor='#000';ctx.shadowBlur=4;ctx.fillText(c[0].toUpperCase(),k.x+8,k.y+0.5);ctx.fillText(c[0].toUpperCase(),k.x+8,k.y+0.5);ctx.shadowBlur=0;
+    });
+  }
   if(S.pt){
     var q=scr(S.pt.lon,S.pt.lat),px=Math.round(q.x)+0.5,py=Math.round(q.y)+0.5;
     ctx.lineWidth=3;ctx.strokeStyle='#000';ctx.beginPath();ctx.arc(px,py,9,0,7);ctx.stroke();
@@ -695,7 +703,7 @@ function useStack(i){
     S.grid=makeGrid(S.scenes);
     S.a=0;S.b=S.scenes.length-1;
     if(want){S.scenes.forEach(function(sc,k){if(sc.day===want.a)S.a=k;if(sc.day===want.b)S.b=k;});S.mode=want.mode;}
-    $('stackinfo').textContent='L-band '+(S.scenes[0].pol||'')+' · '+S.scenes.length+' passes · '+fmtDay(S.scenes[0].time)+' to '+fmtDay(S.scenes[S.scenes.length-1].time)+(st.skipped?'. Left out '+st.skipped+' single-polarisation pass'+(st.skipped>1?'es.':'.'):'')+(S.scenes[0].b.approx?' Position estimated from the footprint.':'');
+    $('stackinfo').textContent='L-band '+(S.scenes[0].pol||'')+' · '+S.scenes.length+' passes · '+fmtDay(S.scenes[0].time)+' to '+fmtDay(S.scenes[S.scenes.length-1].time)+(st.skipped?'. Left out '+st.skipped+' single-polarisation pass'+(st.skipped>1?'es.':'.'):'')+(S.scenes[0].b.approx?'. Position fitted from the footprint, good to about one pixel.':'');
     renderDates();fit();
     return setMode(S.mode).then(function(){if(tok===S.token)preloadRest(tok);});
   }).catch(function(e){if(tok===S.token)busy(e.message,true);});

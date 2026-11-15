@@ -21,7 +21,7 @@ Live app: https://zholdasbay-tech.github.io/aua-jer/
 | NISAR L2 GCOV browse images, NASA/ISRO, via ASF DAAC | Radar imagery (HH and HV) |
 | ASF Search API | Finding passes and footprints |
 | NASA POWER daily API (MERRA-2, GEOS) | Air temperature and rain at the clicked point |
-| NASA GIBS (Black Marble, Blue Marble, reference labels) | Base maps |
+| NASA GIBS (Black Marble, Blue Marble) | Base maps |
 | OpenStreetMap | Optional base map |
 
 ## Limits
