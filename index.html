@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aua Jer — NISAR surface-change explorer</title>
+<meta name="description" content="Compare two NISAR L-band radar passes anywhere on Earth, map what changed on the ground, and check NASA POWER weather for the reason.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--ink:#f4f4f2;--mut:#8b9098;--dim:#5d626a;--line:rgba(255,255,255,.14);--line2:rgba(255,255,255,.3);--amber:#f5a524;--hh:#ec74dc;--hv:#74dd74;--up:#ffa62b;--down:#4aa8ff;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:"Space Grotesk",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+#app{display:grid;grid-template-columns:minmax(0,1fr) 404px;grid-template-rows:56px minmax(0,1fr) 28px;height:100vh;height:100dvh}
+.mono,.k,nav a,button,select,input,.chip,.tag,#hudtxt,#status,.modes button{font-family:var(--mono)}
+/* top bar */
+#top{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:0 18px;border-bottom:1px solid var(--line);background:#000}
+.logo{display:flex;align-items:center;gap:10px;font:500 17px/1 var(--sans);letter-spacing:.14em;color:var(--ink);text-decoration:none}
+nav{display:flex;gap:26px;margin:0 auto}
+nav a{font-size:10.5px;letter-spacing:.2em;color:var(--mut);text-decoration:none;text-transform:uppercase;padding:8px 0;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus-visible{color:var(--ink);border-bottom-color:var(--line2)}
+button,select,input[type=text]{font-size:11px;letter-spacing:.06em;color:var(--ink);background:#000;border:1px solid var(--line);border-radius:2px;padding:9px 11px;min-height:38px}
+button{cursor:pointer;text-transform:uppercase;letter-spacing:.14em}
+button:hover{border-color:var(--line2)}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:1px solid var(--amber);outline-offset:2px}
+.solid{background:var(--ink);color:#000;border-color:var(--ink);font-weight:700}
+.solid:hover{background:#fff}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--amber);margin-right:9px;vertical-align:1px}
+select{width:100%}
+/* stage */
+#stage{position:relative;overflow:hidden;background:#000;min-height:340px}
+#map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+#map.drag{cursor:grabbing}
+.cn{position:absolute;width:22px;height:22px;border:1px solid var(--line2);pointer-events:none}
+.cn.a{left:10px;top:10px;border-right:0;border-bottom:0}.cn.b{right:10px;top:10px;border-left:0;border-bottom:0}
+.cn.c{left:10px;bottom:10px;border-right:0;border-top:0}.cn.d{right:10px;bottom:10px;border-left:0;border-top:0}
+.ticks{position:absolute;right:10px;top:25%;bottom:25%;width:7px;pointer-events:none;background:repeating-linear-gradient(180deg,var(--line2) 0 1px,transparent 1px 9px)}
+.tag{position:absolute;top:22px;padding:7px 11px;background:rgba(0,0,0,.82);border:1px solid var(--line);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
+#tagA{left:22px;border-left:2px solid var(--down)}
+#tagB{right:74px;border-left:2px solid var(--up)}
+#swipe{position:absolute;top:0;bottom:0;width:1px;background:#fff}
+#knob{position:absolute;top:50%;left:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:#000;color:#fff;border:1px solid #fff;font-size:15px;cursor:ew-resize;touch-action:none;min-height:0;padding:0;letter-spacing:0}
+.zoom{position:absolute;right:22px;top:22px;display:grid;gap:5px}
+.zoom button{width:40px;height:40px;min-height:0;padding:0;background:rgba(0,0,0,.82);font-size:15px;letter-spacing:0}
+.layers{position:absolute;left:22px;bottom:44px;max-width:calc(100% - 44px);display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:rgba(0,0,0,.82);border:1px solid var(--line);padding:6px 10px;font:10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.layers select{width:auto;min-height:28px;padding:3px 8px}
+.layers input[type=range]{width:86px;accent-color:#fff}
+.layers input[type=checkbox]{accent-color:#fff;vertical-align:-2px}
+#hudtxt{position:absolute;left:22px;right:22px;bottom:18px;display:flex;justify-content:space-between;gap:12px;font-size:10px;letter-spacing:.12em;color:#b9bec6;text-transform:uppercase;pointer-events:none;text-shadow:0 1px 2px #000}
+#busy{position:absolute;left:50%;top:22px;transform:translateX(-50%);background:#000;border:1px solid var(--line2);padding:8px 14px;font:10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;max-width:70%;text-align:center}
+#busy.err{border-color:#e06565;color:#ffb9b9}
+/* hero */
+#hero{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(22px,7vw,96px);background:linear-gradient(90deg,rgba(0,0,0,.96) 0,rgba(0,0,0,.82) 38%,rgba(0,0,0,.25) 72%,rgba(0,0,0,0) 100%);transition:opacity .45s}
+#hero.off{opacity:0;pointer-events:none}
+#hero .in{max-width:600px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.chip{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:#c9cdd3;border:1px solid var(--line);padding:6px 9px;background:rgba(255,255,255,.03)}
+#hero h1{font:500 clamp(34px,5vw,58px)/1.04 var(--sans);letter-spacing:-.025em;margin:0}
+#hero h1 i{display:block;color:#6f747c;font-weight:400}
+#hero p{font-size:15.5px;color:#b9bec6;max-width:470px;margin:20px 0 26px}
+#hero .cta{display:flex;flex-wrap:wrap;gap:10px}
+/* panel */
+#panel{border-left:1px solid var(--line);overflow-y:auto;background:#000}
+#panel section{padding:18px 20px 20px;border-bottom:1px solid var(--line)}
+.k{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--mut);margin:0 0 13px}
+.k b{color:var(--ink);font-weight:500}
+p{margin:0 0 8px}
+.row{display:flex;gap:6px;margin-top:6px}
+.row input{flex:1;min-width:0;text-transform:none;letter-spacing:.04em}
+.hint{color:var(--mut);font-size:12.5px;margin:10px 0 0}
+.ab{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ab label,.ctl label{display:block;font:10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.ab select,.ctl select{margin-top:6px}
+.tl{position:relative;height:40px;margin:16px 6px 0}
+.tl:before{content:"";position:absolute;left:0;right:0;top:9px;height:1px;background:var(--line2)}
+.tl button{position:absolute;top:2px;width:15px;height:15px;min-height:0;margin-left:-7px;padding:0;border-radius:50%;background:#000;border:1px solid #666}
+.tl button.ok{border-color:#fff}
+.tl button.a{background:var(--down);border-color:var(--down)}
+.tl button.b{background:var(--up);border-color:var(--up)}
+.tl span{position:absolute;top:24px;font:9.5px var(--mono);letter-spacing:.1em;color:var(--mut);text-transform:uppercase;white-space:nowrap}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);margin-top:12px}
+.modes button{border-right-width:0;font-size:10.5px}
+.modes button:last-child{border-right-width:1px}
+.modes button[aria-pressed=true]{background:var(--ink);color:#000;border-color:var(--ink);font-weight:700}
+.wide{width:100%;margin-top:6px}
+.ctl{display:grid;gap:12px}
+.ctl input[type=range]{width:100%;accent-color:#fff;margin-top:6px}
+.legend{display:flex;gap:16px;font:10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#c9cdd3;flex-wrap:wrap}
+.sw{display:inline-block;width:10px;height:10px;margin-right:7px;vertical-align:-1px}
+.stats{font-size:13.5px;margin-top:12px;color:#d7dae0}
+.stats b{font-family:var(--mono);font-weight:500}
+#hot{list-style:none;margin:12px 0 0;padding:0;border-top:1px solid var(--line)}
+#hot li{border-bottom:1px solid var(--line)}
+#hot button{width:100%;display:grid;grid-template-columns:22px 58px 1fr auto;gap:8px;align-items:center;border:0;text-align:left;padding:8px 2px;letter-spacing:.06em;min-height:36px;text-transform:none}
+#hot button:hover{background:rgba(255,255,255,.05)}
+#hot .n{color:var(--dim)}
+#chart{width:100%;height:236px;display:block;margin-top:4px}
+#insight{font-size:13px;color:#d7dae0;margin-top:10px}
+.prov{font:10.5px/1.6 var(--mono);color:var(--mut);word-break:break-all}
+.prov a,.more a{color:var(--ink)}
+details{border-bottom:1px solid var(--line);padding:14px 20px}
+summary{cursor:pointer;font:10px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--ink)}
+.more{font-size:13px;color:#c2c6cd}
+.more ul{padding-left:16px;margin:12px 0 2px}
+.more li{margin-bottom:7px}
+.foot{padding:16px 20px 26px;color:var(--dim);font:10px/1.7 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+#status{grid-column:1/-1;display:flex;gap:26px;align-items:center;padding:0 18px;border-top:1px solid var(--line);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);white-space:nowrap;overflow:hidden}
+#status b{color:#b9bec6;font-weight:400}
+[hidden]{display:none!important}
+@media (max-width:960px){
+  #app{grid-template-columns:1fr;grid-template-rows:56px auto auto auto;height:auto}
+  #stage{height:68vh}#panel{border-left:0;border-top:1px solid var(--line)}nav{display:none}#top{justify-content:space-between}
+  #hudtxt{display:none}.layers{bottom:14px}#status{flex-wrap:wrap;height:auto;padding:8px 18px;gap:6px 18px;white-space:normal}
+  #hero{background:rgba(0,0,0,.84)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+<header id="top">
+  <a class="logo" href="#" id="home" aria-label="Aua Jer, start">
+    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M2 17c4-6 7-6 11-2s7 4 11-3" fill="none" stroke="#ec74dc" stroke-width="1.6"/><path d="M2 22c4-5 7-5 11-1s7 3 11-3" fill="none" stroke="#74dd74" stroke-width="1.6"/><circle cx="19" cy="6" r="2.4" fill="#f4f4f2"/><path d="M17 8l-7 7" stroke="#f4f4f2" stroke-width="1" stroke-dasharray="1.5 2.5"/></svg>
+    AUA JER
+  </a>
+  <nav aria-label="Sections">
+    <a href="#" data-go="explore">Explorer</a>
+    <a href="#" data-go="method">Method</a>
+    <a href="#" data-go="data">Data</a>
+    <a href="#" data-go="team">Team</a>
+  </nav>
+  <button id="share" class="solid"><span class="dot"></span>Share view</button>
+</header>
+
+<main id="stage" aria-label="Map">
+  <canvas id="map"></canvas>
+  <i class="cn a"></i><i class="cn b"></i><i class="cn c"></i><i class="cn d"></i><i class="ticks"></i>
+  <div id="swipe" hidden><button id="knob" aria-label="Drag to compare pass A and pass B">&#8596;</button></div>
+  <div id="tagA" class="tag" hidden></div>
+  <div id="tagB" class="tag" hidden></div>
+  <div class="zoom">
+    <button id="zin" aria-label="Zoom in">+</button>
+    <button id="zout" aria-label="Zoom out">&minus;</button>
+    <button id="zfit" aria-label="Fit radar footprint" title="Fit radar footprint">&#9635;</button>
+    <button id="snap" aria-label="Save map as PNG" title="Save map as PNG">&#8681;</button>
+  </div>
+  <div class="layers">
+    <label for="base">Base</label>
+    <select id="base"><option value="night">NASA Black Marble</option><option value="gibs">NASA Blue Marble</option><option value="osm">OpenStreetMap</option></select>
+    <label for="opa">Radar</label><input id="opa" type="range" min="0" max="100" value="100" aria-label="Radar layer opacity">
+    <label><input id="lab" type="checkbox" checked> Names</label>
+  </div>
+  <div id="hudtxt"><span id="coordtxt"></span><span id="att"></span></div>
+  <div id="busy" role="status" aria-live="polite" hidden></div>
+  <div id="hero">
+    <div class="in">
+      <div class="chips"><span class="chip">NISAR</span><span class="chip">L-band SAR</span><span class="chip">12-day repeat</span><span class="chip">Open data</span></div>
+      <h1>The ground moves.<i>Watch it every 12 days.</i></h1>
+      <p>Aua Jer compares two NISAR radar passes over any place on Earth, maps what changed on the ground, and checks the weather for a reason.</p>
+      <div class="cta"><button id="start" class="solid"><span class="dot"></span>Start exploring &rarr;</button><button id="howto">How to read radar</button></div>
+    </div>
+  </div>
+</main>
+
+<aside id="panel">
+  <section id="sPlace">
+    <p class="k"><span>01 &mdash; Place</span><b id="kPlace"></b></p>
+    <select id="preset" aria-label="Example places"></select>
+    <div class="row">
+      <input id="coord" type="text" inputmode="decimal" placeholder="lat, lon   51.13, 71.43" aria-label="Latitude, longitude">
+      <button id="go">Search</button>
+      <button id="here" title="Search NISAR passes at the map centre">Centre</button>
+    </div>
+    <div class="row"><select id="stack" aria-label="Radar track"></select></div>
+    <p id="stackinfo" class="hint"></p>
+  </section>
+
+  <section>
+    <p class="k"><span>02 &mdash; Two radar passes</span><b id="kLoad"></b></p>
+    <div class="ab">
+      <label>A / before<select id="selA"></select></label>
+      <label>B / after<select id="selB"></select></label>
+    </div>
+    <div id="tl" class="tl" aria-label="Timeline of passes. Click a dot to set B, Shift-click to set A."></div>
+    <div class="modes">
+      <button data-mode="single" aria-pressed="false">Single</button>
+      <button data-mode="swipe" aria-pressed="true">Swipe A|B</button>
+      <button data-mode="change" aria-pressed="false">Change</button>
+    </div>
+    <button id="play" class="wide">&#9654; Play the dance</button>
+    <p class="hint"><b style="color:var(--hh)">Magenta</b> is HH, <b style="color:var(--hv)">green</b> is HV. Same track and frame each time, so the viewing geometry does not change between passes.</p>
+  </section>
+
+  <section>
+    <p class="k"><span>03 &mdash; What changed, A &rarr; B</span></p>
+    <div class="ctl">
+      <label>Channel<select id="band"><option value="mix">HH + HV together</option><option value="hh">HH only: surface, moisture, buildings</option><option value="hv">HV only: vegetation volume</option></select></label>
+      <label>Flag changes above <output id="thrv">26</output> of 255<input id="thr" type="range" min="8" max="90" value="26"></label>
+      <div class="legend"><span><i class="sw" style="background:var(--up)"></i>Echo brighter</span><span><i class="sw" style="background:var(--down)"></i>Echo darker</span></div>
+    </div>
+    <p id="stats" class="stats">Open the Change view to compute it.</p>
+    <ol id="hot" aria-label="Strongest change hotspots"></ol>
+  </section>
+
+  <section>
+    <p class="k"><span>04 &mdash; Ask a point</span><b id="kPt"></b></p>
+    <p class="hint" id="pthint" style="margin-top:0">Click anywhere on the radar image. You get the radar echo of that spot in every pass, measured against the scene median, plus NASA POWER temperature and rain for the same coordinates.</p>
+    <canvas id="chart" hidden></canvas>
+    <p id="insight"></p>
+    <button id="csv" class="wide" hidden>&#8681; Download this point as CSV</button>
+  </section>
+
+  <section>
+    <p class="k"><span>05 &mdash; Provenance</span></p>
+    <div id="prov" class="prov">No passes loaded yet.</div>
+  </section>
+
+  <details id="dMethod">
+    <summary>How to read the radar</summary>
+    <div class="more"><ul>
+      <li>NISAR carries an L-band radar with a wavelength of about 24 cm. It works at night and through cloud, and returns to the same track every 12 days.</li>
+      <li><b style="color:var(--hh)">HH</b> is strong over rough or wet ground and over buildings. <b style="color:var(--hv)">HV</b> comes from scattering inside vegetation.</li>
+      <li>An echo usually gets <b style="color:var(--up)">brighter</b> when soil gets wetter, crops grow or a field is ploughed rough. It gets <b style="color:var(--down)">darker</b> when soil dries, crops are harvested, calm open water appears, or the ground freezes.</li>
+      <li>One change on the map can have several causes. The weather chart is a hint, not proof.</li>
+    </ul></div>
+  </details>
+  <details id="dData">
+    <summary>Data and limits</summary>
+    <div class="more"><ul>
+      <li>Radar: NISAR L2 GCOV browse images (HH and HV), streamed live from NASA's Alaska Satellite Facility DAAC and found with the ASF Search API.</li>
+      <li>Browse images are about 200 m per pixel and 8-bit, scaled for display. The change map is a relative difference after removing the scene-wide median. It is not calibrated backscatter in dB. Point charts are relative to each scene's median for the same reason, so a change across the whole scene cannot be told apart from display scaling.</li>
+      <li>Weather: NASA POWER daily values (MERRA-2 and GEOS) at the clicked coordinates. It is a model grid, not a station.</li>
+      <li>Base maps: NASA GIBS Black Marble, Blue Marble and reference labels, or OpenStreetMap.</li>
+      <li>Next step: read the full-resolution GCOV HDF5 products for calibrated gamma-nought, and add ground readings from the Aua phone-barometer network.</li>
+    </ul></div>
+  </details>
+  <div class="foot" id="team">Team Aua &middot; Astana, Kazakhstan<br>NASA Space Apps Challenge 2026 &middot; Dancing with the SARs<br>Not affiliated with or endorsed by NASA</div>
+</aside>
+
+<footer id="status">
+  <span>UTC <b id="stTime">--:--:--</b></span>
+  <span>Archive <b id="stLink">ASF DAAC</b></span>
+  <span>Stack <b id="stStack">--</b></span>
+  <span>Passes <b id="stLoad">0 / 0</b></span>
+  <span>Weather <b>NASA POWER</b></span>
+</footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+var ASF='https://api.daac.asf.alaska.edu/services/search/param';
+var POWER='https://power.larc.nasa.gov/api/temporal/daily/point';
+var GIBS='https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/';
+var BASES={
+  night:{url:GIBS+'VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',max:8,dim:1,att:'Base: NASA GIBS Black Marble'},
+  gibs:{url:GIBS+'BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg',max:8,dim:0.5,att:'Base: NASA GIBS Blue Marble'},
+  osm:{url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',max:12,dim:0.55,att:'Base: © OpenStreetMap contributors'}
+};
+var LABELS={url:GIBS+'Reference_Labels_15m/default/GoogleMapsCompatible_Level13/{z}/{y}/{x}.png',max:10,dim:1};
+var PRESETS=[
+  {n:'Astana and the Akmola wheat belt, Kazakhstan',lat:51.13,lon:71.43},
+  {n:'Lake Tengiz and Korgalzhyn wetlands, Kazakhstan',lat:50.45,lon:69.0},
+  {n:'Kostanay grain fields, Kazakhstan',lat:53.2,lon:63.6},
+  {n:'North Aral Sea, Kazakhstan',lat:46.3,lon:60.75},
+  {n:'Lake Balkhash and the Ili delta, Kazakhstan',lat:45.6,lon:74.9},
+  {n:'Tonle Sap floodplain, Cambodia',lat:12.9,lon:104.0}
+];
+var GW=1536,BS=32;
+var S={lon:71.43,lat:51.13,stacks:[],stackKey:'',scenes:[],grid:null,a:0,b:0,mode:'swipe',thr:26,band:'mix',opa:1,base:'night',labels:true,swipe:0.5,pt:null,series:[],wx:null,change:null,hot:[],view:{cx:0.7,cy:0.33,z:5},token:0,playing:null,want:null};
+function $(id){return document.getElementById(id);}
+var cv=$('map'),ctx=cv.getContext('2d');
+var VW=0,VH=0,DPR=1,dirty=false;
+
+/* ---------- Web Mercator helpers (world coordinates 0..1) ---------- */
+function mx(lon){return (lon+180)/360;}
+function my(lat){var s=Math.sin(lat*Math.PI/180);return 0.5-Math.log((1+s)/(1-s))/(4*Math.PI);}
+function ilon(x){return x*360-180;}
+function ilat(y){return Math.atan(Math.sinh(Math.PI*(1-2*y)))*180/Math.PI;}
+function fmtDay(t){return new Date(t).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});}
+function ymd(ms){var d=new Date(ms);return ''+d.getUTCFullYear()+('0'+(d.getUTCMonth()+1)).slice(-2)+('0'+d.getUTCDate()).slice(-2);}
+function ll(lat,lon){return Math.abs(lat).toFixed(3)+'°'+(lat<0?'S':'N')+' '+Math.abs(lon).toFixed(3)+'°'+(lon<0?'W':'E');}
+function busy(msg,err){var b=$('busy');if(!msg){b.hidden=true;return;}b.hidden=false;b.textContent=msg;b.className=err?'err':'';}
+
+/* ---------- NISAR search (ASF Search API) ---------- */
+function searchStacks(lon,lat){
+  var u=ASF+'?dataset=NISAR&processingLevel=GCOV&intersectsWith=POINT('+lon.toFixed(4)+'%20'+lat.toFixed(4)+')&start=2025-08-01&maxResults=250&output=jsonlite';
+  return fetch(u).then(function(r){if(!r.ok)throw new Error('ASF search answered HTTP '+r.status);return r.json();}).then(function(j){
+    var res=Array.isArray(j)?j:(j.results||[]),groups={};
+    res.forEach(function(g){
+      var png=(g.browse||[]).filter(function(x){return /_LATLON\.png$/.test(x);})[0];
+      if(!png||!g.startTime)return;
+      var add=(g.nisar&&g.nisar.additionalUrls)||[];
+      var kml=add.filter(function(x){return /_LATLON\.kml$/.test(x);})[0]||null;
+      var key=g.path+'-'+g.frame+'-'+g.flightDirection,day=g.startTime.slice(0,10);
+      var col=g.collectionName||'',rank=/BETA/.test(col)?0:(/PROVISIONAL/.test(col)?1:2);
+      var pol=(g.nisar&&g.nisar.mainBandPolarization)||[];
+      var sc={name:g.granuleName,time:g.startTime,day:day,png:png,kml:kml,wkt:g.wkt||'',rank:rank,col:col,h5:g.downloadUrl,pol:pol.join?pol.join('+'):String(pol)};
+      if(!groups[key])groups[key]={key:key,path:g.path,frame:g.frame,dir:g.flightDirection,byDay:{}};
+      var old=groups[key].byDay[day];
+      if(!old||old.rank<sc.rank)groups[key].byDay[day]=sc;
+    });
+    return Object.keys(groups).map(function(k){
+      var G=groups[k],sc=Object.keys(G.byDay).map(function(d){return G.byDay[d];}).sort(function(a,b){return a.time<b.time?-1:1;});
+      var dual=sc.filter(function(x){return /HV|VH/.test(x.pol);}),skipped=0;
+      if(dual.length&&dual.length<sc.length){skipped=sc.length-dual.length;sc=dual;} /* one polarisation set per stack */
+      return {key:G.key,path:G.path,frame:G.frame,dir:G.dir,scenes:sc,skipped:skipped};
+    }).sort(function(a,b){return b.scenes.length-a.scenes.length;});
+  });
+}
+function wktBox(wkt){
+  var m=wkt.match(/-?\d+(\.\d+)?/g)||[],lons=[],lats=[];
+  for(var i=0;i+1<m.length;i+=2){lons.push(+m[i]);lats.push(+m[i+1]);}
+  if(!lons.length)return null;
+  return {w:Math.min.apply(0,lons),e:Math.max.apply(0,lons),s:Math.min.apply(0,lats),n:Math.max.apply(0,lats)};
+}
+function sceneBounds(sc){
+  function rough(){var b=wktBox(sc.wkt);if(b)b.approx=true;return b;}
+  if(!sc.kml)return Promise.resolve(rough());
+  return fetch(sc.kml).then(function(r){return r.text();}).then(function(t){
+    var m=t.match(/<coordinates>([^<]+)<\/coordinates>/);
+    if(!m)return rough();
+    return wktBox(m[1].replace(/,/g,' '));
+  }).catch(function(){return rough();});
+}
+function makeGrid(scenes){
+  var w=180,e=-180,s=90,n=-90;
+  scenes.forEach(function(sc){w=Math.min(w,sc.b.w);e=Math.max(e,sc.b.e);s=Math.min(s,sc.b.s);n=Math.max(n,sc.b.n);});
+  var x0=mx(w),x1=mx(e),y0=my(n),y1=my(s),W=GW,H=Math.max(2,Math.round(W*(y1-y0)/(x1-x0)));
+  if(H>2200){W=Math.round(W*2200/H);H=2200;}
+  return {w:w,e:e,s:s,n:n,x0:x0,x1:x1,y0:y0,y1:y1,W:W,H:H};
+}
+
+/* ---------- Load one pass and resample it onto the common Mercator grid ---------- */
+function loadImage(url){return new Promise(function(res,rej){var im=new Image();im.crossOrigin='anonymous';im.onload=function(){res(im);};im.onerror=function(){rej(new Error('Could not load the radar image'));};im.src=url;});}
+function loadScene(i){
+  var sc=S.scenes[i];
+  if(!sc)return Promise.reject(new Error('No such pass'));
+  if(sc.ready)return Promise.resolve(sc);
+  if(sc.loading)return sc.loading;
+  var g=S.grid;
+  sc.loading=loadImage(sc.png).then(function(im){
+    var sw=im.naturalWidth,sh=im.naturalHeight,src=document.createElement('canvas');
+    src.width=sw;src.height=sh;
+    var sx=src.getContext('2d',{willReadFrequently:true});sx.drawImage(im,0,0);
+    var sd=sx.getImageData(0,0,sw,sh).data,out=new ImageData(g.W,g.H),od=out.data,b=sc.b;
+    var col=new Int32Array(g.W),row=new Int32Array(g.H),i2,j,c,r,hH=new Uint32Array(256),hV=new Uint32Array(256),cnt=0,v;
+    if(b.approx){
+      /* No KML: the footprint polygon covers only the opaque part of the image, so stretch it to the full frame. */
+      var bx0=sw,bx1=0,by0=sh,by1=0;
+      for(j=0;j<sh;j+=2)for(i2=0;i2<sw;i2+=2){if(sd[(j*sw+i2)*4+3]>127){if(i2<bx0)bx0=i2;if(i2>bx1)bx1=i2;if(j<by0)by0=j;if(j>by1)by1=j;}}
+      if(bx1>bx0&&by1>by0){
+        var dx=(b.e-b.w)/(bx1-bx0+2),dy=(b.n-b.s)/(by1-by0+2);
+        sc.b=b={w:b.w-bx0*dx,e:b.e+(sw-1-bx1)*dx,n:b.n+by0*dy,s:b.s-(sh-1-by1)*dy,approx:true};
+      }
+    }
+    for(i2=0;i2<g.W;i2++){c=Math.floor((ilon(g.x0+(i2+0.5)/g.W*(g.x1-g.x0))-b.w)/(b.e-b.w)*sw);col[i2]=(c>=0&&c<sw)?c:-1;}
+    for(j=0;j<g.H;j++){r=Math.floor((b.n-ilat(g.y0+(j+0.5)/g.H*(g.y1-g.y0)))/(b.n-b.s)*sh);row[j]=(r>=0&&r<sh)?r:-1;}
+    for(j=0;j<g.H;j++){
+      r=row[j];if(r<0)continue;
+      var ro=r*sw*4,oo=j*g.W*4;
+      for(i2=0;i2<g.W;i2++){
+        c=col[i2];if(c<0)continue;
+        var p=ro+c*4,o=oo+i2*4;
+        if(sd[p+3]<128||(sd[p]+sd[p+1]+sd[p+2])<6)continue; /* transparent or no-data */
+        od[o]=sd[p];od[o+1]=sd[p+1];od[o+2]=sd[p+2];od[o+3]=255;
+        hH[sd[p]]++;hV[sd[p+1]]++;cnt++;
+      }
+    }
+    /* Browse images are scaled for display one by one, so point readings are taken against the scene median. */
+    var mh=0,mv=0,ah=0,av=0,fh=false,fv=false;
+    for(v=0;v<256;v++){ah+=hH[v];av+=hV[v];if(!fh&&ah>=cnt/2){mh=v;fh=true;}if(!fv&&av>=cnt/2){mv=v;fv=true;}}
+    sc.med={hh:mh,hv:mv};
+    var k=document.createElement('canvas');k.width=g.W;k.height=g.H;
+    sc.cx=k.getContext('2d',{willReadFrequently:true});sc.cx.putImageData(out,0,0);
+    sc.canvas=k;sc.ready=true;sc.loading=null;renderTimeline();
+    return sc;
+  }).catch(function(e){sc.loading=null;sc.failed=true;renderTimeline();throw e;});
+  return sc.loading;
+}
+function pixels(sc){return sc.cx.getImageData(0,0,S.grid.W,S.grid.H).data;}
+
+/* ---------- Change detection ---------- */
+function bandVal(d,o,band){return band==='hh'?d[o]:(band==='hv'?d[o+1]:((d[o]+d[o+1])>>1));}
+function computeChange(){
+  var A=S.scenes[S.a],B=S.scenes[S.b],g=S.grid;
+  if(!A||!B||!A.ready||!B.ready||S.a===S.b){S.change=null;return;}
+  var n=g.W*g.H,diff=new Int16Array(n),hist=new Uint32Array(511),valid=0,p,o,d,a=pixels(A),b=pixels(B),band=S.band;
+  for(p=0;p<n;p++){
+    o=p*4;
+    if(a[o+3]<128||b[o+3]<128){diff[p]=-32768;continue;}
+    d=bandVal(b,o,band)-bandVal(a,o,band);diff[p]=d;hist[d+255]++;valid++;
+  }
+  var half=valid/2,acc=0,med=0;
+  for(p=0;p<511;p++){acc+=hist[p];if(acc>=half){med=p-255;break;}}
+  S.change={diff:diff,med:med,valid:valid,bdata:b,key:S.a+'|'+S.b+'|'+band,canvas:null};
+  findHotspots();renderChange();
+}
+function findHotspots(){
+  var ch=S.change,g=S.grid,bx=Math.floor(g.W/BS),by=Math.floor(g.H/BS),list=[],X,Y,i,j,d,sum,n;
+  for(Y=0;Y<by;Y++)for(X=0;X<bx;X++){
+    sum=0;n=0;
+    for(j=Y*BS;j<(Y+1)*BS;j+=2)for(i=X*BS;i<(X+1)*BS;i+=2){d=ch.diff[j*g.W+i];if(d===-32768)continue;sum+=d-ch.med;n++;}
+    if(n<BS*BS/4*0.7)continue;
+    list.push({X:X,Y:Y,m:sum/n});
+  }
+  list.sort(function(p,q){return Math.abs(q.m)-Math.abs(p.m);});
+  var out=[];
+  for(i=0;i<list.length&&out.length<6;i++){
+    var c=list[i],near=false;
+    for(j=0;j<out.length;j++)if(Math.abs(out[j].X-c.X)<=2&&Math.abs(out[j].Y-c.Y)<=2)near=true;
+    if(near)continue;
+    c.lon=ilon(g.x0+((c.X+0.5)*BS)/g.W*(g.x1-g.x0));c.lat=ilat(g.y0+((c.Y+0.5)*BS)/g.H*(g.y1-g.y0));
+    out.push(c);
+  }
+  S.hot=out;
+  var ol=$('hot');ol.innerHTML='';
+  out.forEach(function(c,k){
+    var li=document.createElement('li'),b=document.createElement('button');
+    b.innerHTML='<span class="n">0'+(k+1)+'</span><span style="color:var(--'+(c.m>0?'up':'down')+')">'+(c.m>0?'+':'−')+Math.abs(c.m).toFixed(0)+'</span><span>'+ll(c.lat,c.lon)+'</span><span class="n">go →</span>';
+    b.title='Fly to this hotspot and read its history';
+    b.onclick=function(){flyTo(c.lat,c.lon,9.3);inspect(c.lon,c.lat);};
+    li.appendChild(b);ol.appendChild(li);
+  });
+}
+function renderChange(){
+  var ch=S.change,g=S.grid;
+  if(!ch)return;
+  var B=ch.bdata,out=new ImageData(g.W,g.H),od=out.data,T=S.thr,up=0,down=0,upA=0,downA=0,j,i,p,o,d,gray,t;
+  var dlon=(g.e-g.w)/g.W*111.32;
+  for(j=0;j<g.H;j++){
+    var side=dlon*Math.cos(ilat(g.y0+(j+0.5)/g.H*(g.y1-g.y0))*Math.PI/180),cell=side*side;
+    for(i=0;i<g.W;i++){
+      p=j*g.W+i;d=ch.diff[p];if(d===-32768)continue;
+      o=p*4;d-=ch.med;gray=14+0.4*((B[o]+B[o+1])>>1);
+      if(d>T){t=Math.min(1,0.5+(d-T)/60);od[o]=gray+(255-gray)*t;od[o+1]=gray+(166-gray)*t;od[o+2]=gray+(43-gray)*t;up++;upA+=cell;}
+      else if(d<-T){t=Math.min(1,0.5+(-d-T)/60);od[o]=gray+(74-gray)*t;od[o+1]=gray+(168-gray)*t;od[o+2]=gray+(255-gray)*t;down++;downA+=cell;}
+      else{od[o]=gray;od[o+1]=gray;od[o+2]=gray;}
+      od[o+3]=255;
+    }
+  }
+  if(!ch.canvas){ch.canvas=document.createElement('canvas');ch.canvas.width=g.W;ch.canvas.height=g.H;}
+  ch.canvas.getContext('2d').putImageData(out,0,0);
+  var pu=100*up/ch.valid,pd=100*down/ch.valid;
+  $('stats').innerHTML='<b style="color:var(--up)">'+pu.toFixed(1)+'%</b> of the overlap got brighter, about <b>'+Math.round(upA).toLocaleString('en-US')+' km²</b>. <b style="color:var(--down)">'+pd.toFixed(1)+'%</b> got darker, about <b>'+Math.round(downA).toLocaleString('en-US')+' km²</b>. Scene-wide median shift removed: <b>'+(ch.med>0?'+':'')+ch.med+'</b>. Strongest 8 km blocks:';
+  invalidate();
+}
+function ensureChange(){
+  if(S.a===S.b){S.change=null;S.hot=[];$('hot').innerHTML='';$('stats').textContent='Pick two different passes for A and B.';return Promise.resolve();}
+  var key=S.a+'|'+S.b+'|'+S.band;
+  if(S.change&&S.change.key===key){renderChange();return Promise.resolve();}
+  return Promise.all([loadScene(S.a),loadScene(S.b)]).then(function(){computeChange();});
+}
+
+/* ---------- Map drawing ---------- */
+var tiles={};
+function tile(url){
+  var t=tiles[url];
+  if(t)return t;
+  t=tiles[url]={ok:false,img:new Image()};
+  t.img.crossOrigin='anonymous';
+  t.img.onload=function(){t.ok=true;invalidate();};
+  t.img.src=url;
+  return t;
+}
+function drawTiles(spec){
+  var z=S.view.z,tz=Math.max(0,Math.min(spec.max,Math.round(z))),n=Math.pow(2,tz),ts=256*Math.pow(2,z-tz),W=256*Math.pow(2,z);
+  var left=S.view.cx*W-VW/2,top=S.view.cy*W-VH/2;
+  var xa=Math.floor(left/ts),xb=Math.floor((left+VW)/ts),ya=Math.max(0,Math.floor(top/ts)),yb=Math.min(n-1,Math.floor((top+VH)/ts)),x,y;
+  ctx.globalAlpha=spec.dim;
+  for(y=ya;y<=yb;y++)for(x=xa;x<=xb;x++){
+    var xx=((x%n)+n)%n,t=tile(spec.url.replace('{z}',tz).replace('{x}',xx).replace('{y}',y));
+    if(!t.ok)continue;
+    var px=Math.round(x*ts-left),py=Math.round(y*ts-top);
+    ctx.drawImage(t.img,px,py,Math.round((x+1)*ts-left)-px,Math.round((y+1)*ts-top)-py);
+  }
+  ctx.globalAlpha=1;
+}
+function scr(lon,lat){var W=256*Math.pow(2,S.view.z);return {x:(mx(lon)-S.view.cx)*W+VW/2,y:(my(lat)-S.view.cy)*W+VH/2};}
+function gridRect(){var g=S.grid,W=256*Math.pow(2,S.view.z);return {x:(g.x0-S.view.cx)*W+VW/2,y:(g.y0-S.view.cy)*W+VH/2,w:(g.x1-g.x0)*W,h:(g.y1-g.y0)*W};}
+function draw(){
+  dirty=false;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle='#000';ctx.fillRect(0,0,VW,VH);
+  ctx.imageSmoothingEnabled=true;
+  drawTiles(BASES[S.base]);
+  if(S.grid&&S.scenes.length){
+    var r=gridRect(),A=S.scenes[S.a],B=S.scenes[S.b];
+    ctx.imageSmoothingEnabled=(r.w/S.grid.W)<3;
+    ctx.globalAlpha=S.opa;
+    if(S.mode==='change'&&S.change&&S.change.canvas){ctx.drawImage(S.change.canvas,r.x,r.y,r.w,r.h);}
+    else if(S.mode==='swipe'){
+      var sx=S.swipe*VW;
+      if(A&&A.canvas){ctx.save();ctx.beginPath();ctx.rect(0,0,sx,VH);ctx.clip();ctx.drawImage(A.canvas,r.x,r.y,r.w,r.h);ctx.restore();}
+      if(B&&B.canvas){ctx.save();ctx.beginPath();ctx.rect(sx,0,VW-sx,VH);ctx.clip();ctx.drawImage(B.canvas,r.x,r.y,r.w,r.h);ctx.restore();}
+    }else if(B&&B.canvas){ctx.drawImage(B.canvas,r.x,r.y,r.w,r.h);}
+    ctx.globalAlpha=1;ctx.imageSmoothingEnabled=true;
+    if(S.mode==='change'&&S.change){
+      var bw=BS/S.grid.W*r.w,bh=BS/S.grid.H*r.h;
+      ctx.font='10px ui-monospace,Menlo,Consolas,monospace';ctx.textBaseline='bottom';ctx.textAlign='left';
+      S.hot.forEach(function(c,k){
+        var hx=r.x+c.X*bw,hy=r.y+c.Y*bh;
+        ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.strokeRect(Math.round(hx)-3.5,Math.round(hy)-3.5,Math.round(bw)+7,Math.round(bh)+7);
+        ctx.fillStyle='#fff';ctx.fillText('0'+(k+1),hx-3,hy-6);
+      });
+    }
+  }
+  if(S.labels)drawTiles(LABELS);
+  if(S.pt){
+    var q=scr(S.pt.lon,S.pt.lat),px=Math.round(q.x)+0.5,py=Math.round(q.y)+0.5;
+    ctx.lineWidth=3;ctx.strokeStyle='#000';ctx.beginPath();ctx.arc(px,py,9,0,7);ctx.stroke();
+    ctx.lineWidth=1.5;ctx.strokeStyle='#fff';ctx.beginPath();ctx.arc(px,py,9,0,7);ctx.moveTo(px-17,py);ctx.lineTo(px-4,py);ctx.moveTo(px+4,py);ctx.lineTo(px+17,py);ctx.moveTo(px,py-17);ctx.lineTo(px,py-4);ctx.moveTo(px,py+4);ctx.lineTo(px,py+17);ctx.stroke();
+  }
+  $('coordtxt').textContent='Lat '+ilat(S.view.cy).toFixed(3)+' · Lon '+ilon(S.view.cx).toFixed(3)+' · Z '+S.view.z.toFixed(1);
+}
+function invalidate(){if(dirty)return;dirty=true;requestAnimationFrame(draw);}
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1);VW=cv.clientWidth;VH=cv.clientHeight;
+  cv.width=Math.max(1,Math.round(VW*DPR));cv.height=Math.max(1,Math.round(VH*DPR));invalidate();
+}
+function fit(){
+  var g=S.grid;if(!g||!VW)return;
+  S.view.cx=(g.x0+g.x1)/2;S.view.cy=(g.y0+g.y1)/2;
+  S.view.z=Math.max(2,Math.min(12,Math.log(Math.min(VW/((g.x1-g.x0)*256),VH/((g.y1-g.y0)*256)))/Math.LN2-0.08));
+  invalidate();
+}
+function flyTo(lat,lon,z){S.view.cx=mx(lon);S.view.cy=my(lat);if(z)S.view.z=z;invalidate();}
+function zoomAt(px,py,dz){
+  var z0=S.view.z,z1=Math.max(2,Math.min(13,z0+dz));if(z1===z0)return;
+  var W0=256*Math.pow(2,z0),W1=256*Math.pow(2,z1),wx=S.view.cx+(px-VW/2)/W0,wy=S.view.cy+(py-VH/2)/W0;
+  S.view.z=z1;S.view.cx=wx-(px-VW/2)/W1;S.view.cy=Math.max(0.02,Math.min(0.98,wy-(py-VH/2)/W1));invalidate();
+}
+
+/* ---------- Pointer interaction ---------- */
+var ptrs={},moved=0,pinch=0;
+cv.addEventListener('pointerdown',function(e){cv.setPointerCapture(e.pointerId);ptrs[e.pointerId]={x:e.offsetX,y:e.offsetY};moved=0;pinch=0;});
+cv.addEventListener('pointermove',function(e){
+  var p=ptrs[e.pointerId];if(!p)return;
+  var ids=Object.keys(ptrs),W=256*Math.pow(2,S.view.z);
+  if(ids.length===1){
+    var dx=e.offsetX-p.x,dy=e.offsetY-p.y;moved+=Math.abs(dx)+Math.abs(dy);
+    if(moved>4)cv.classList.add('drag');
+    S.view.cx-=dx/W;S.view.cy=Math.max(0.02,Math.min(0.98,S.view.cy-dy/W));p.x=e.offsetX;p.y=e.offsetY;invalidate();
+  }else if(ids.length===2){
+    p.x=e.offsetX;p.y=e.offsetY;
+    var a=ptrs[ids[0]],b=ptrs[ids[1]],dist=Math.hypot(a.x-b.x,a.y-b.y);
+    if(pinch)zoomAt((a.x+b.x)/2,(a.y+b.y)/2,Math.log(dist/pinch)/Math.LN2);
+    pinch=dist;moved=99;
+  }
+});
+function endPtr(e){
+  var p=ptrs[e.pointerId];delete ptrs[e.pointerId];cv.classList.remove('drag');
+  if(p&&moved<5&&e.type==='pointerup'){
+    var W=256*Math.pow(2,S.view.z);
+    inspect(ilon(S.view.cx+(e.offsetX-VW/2)/W),ilat(S.view.cy+(e.offsetY-VH/2)/W));
+  }
+}
+cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);
+cv.addEventListener('wheel',function(e){e.preventDefault();zoomAt(e.offsetX,e.offsetY,Math.max(-0.6,Math.min(0.6,-e.deltaY*0.0022)));},{passive:false});
+cv.addEventListener('dblclick',function(e){zoomAt(e.offsetX,e.offsetY,1);});
+$('zin').onclick=function(){zoomAt(VW/2,VH/2,0.75);};
+$('zout').onclick=function(){zoomAt(VW/2,VH/2,-0.75);};
+$('zfit').onclick=fit;
+function download(name,blob){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();}
+$('snap').onclick=function(){
+  try{cv.toBlob(function(b){if(b)download('aua-jer-map.png',b);});}
+  catch(err){busy('This browser blocked saving the map image.',true);}
+};
+(function(){
+  var k=$('knob'),on=false;
+  k.addEventListener('pointerdown',function(e){on=true;k.setPointerCapture(e.pointerId);e.preventDefault();});
+  k.addEventListener('pointermove',function(e){if(!on)return;var r=$('stage').getBoundingClientRect();setSwipe((e.clientX-r.left)/r.width);});
+  k.addEventListener('pointerup',function(){on=false;});
+  k.addEventListener('keydown',function(e){if(e.key==='ArrowLeft')setSwipe(S.swipe-0.03);if(e.key==='ArrowRight')setSwipe(S.swipe+0.03);});
+})();
+function setSwipe(v){S.swipe=Math.max(0.03,Math.min(0.97,v));$('swipe').style.left=(S.swipe*100)+'%';invalidate();}
+
+/* ---------- Shareable state in the URL hash ---------- */
+function syncHash(){
+  if(!S.scenes.length)return;
+  var h='#'+S.lat.toFixed(3)+','+S.lon.toFixed(3)+'/'+S.stackKey+'/'+S.scenes[S.a].day+'/'+S.scenes[S.b].day+'/'+S.mode;
+  try{history.replaceState(null,'',h);}catch(e){}
+}
+function readHash(){
+  var m=(location.hash||'').match(/^#(-?[\d.]+),(-?[\d.]+)\/([^\/]+)\/(\d{4}-\d\d-\d\d)\/(\d{4}-\d\d-\d\d)\/(single|swipe|change)$/);
+  if(!m)return null;
+  return {lat:+m[1],lon:+m[2],key:m[3],a:m[4],b:m[5],mode:m[6]};
+}
+$('share').onclick=function(){
+  syncHash();
+  var url=location.href,done=function(){busy('Link to this exact view copied.');setTimeout(function(){busy('');},1800);};
+  try{navigator.clipboard.writeText(url).then(done,function(){busy(url);});}catch(e){busy(url);}
+};
+
+/* ---------- Panel: stacks, dates, modes ---------- */
+function renderStacks(){
+  var sel=$('stack');sel.innerHTML='';
+  S.stacks.forEach(function(st,i){
+    var o=document.createElement('option');o.value=i;
+    o.textContent='Track '+st.path+' / frame '+st.frame+' / '+st.dir.toLowerCase()+' / '+st.scenes.length+' passes';
+    sel.appendChild(o);
+  });
+  sel.disabled=!S.stacks.length;
+}
+function renderDates(){
+  ['selA','selB'].forEach(function(id){
+    var sel=$(id);sel.innerHTML='';
+    S.scenes.forEach(function(sc,i){var o=document.createElement('option');o.value=i;o.textContent=fmtDay(sc.time);sel.appendChild(o);});
+  });
+  $('selA').value=S.a;$('selB').value=S.b;renderTimeline();renderTags();renderProv();
+}
+function renderTimeline(){
+  var tl=$('tl');tl.innerHTML='';
+  var n=S.scenes.length,ok=0;
+  S.scenes.forEach(function(sc){if(sc.ready)ok++;});
+  $('stLoad').textContent=ok+' / '+n;$('kLoad').textContent=n?ok+'/'+n+' loaded':'';
+  if(!n)return;
+  var t0=Date.parse(S.scenes[0].time),t1=Date.parse(S.scenes[n-1].time),span=Math.max(1,t1-t0);
+  S.scenes.forEach(function(sc,i){
+    var b=document.createElement('button'),x=n===1?50:(Date.parse(sc.time)-t0)/span*100;
+    b.style.left=x+'%';b.title=fmtDay(sc.time)+(sc.failed?' (failed to load)':'')+'. Click sets B, Shift-click sets A.';
+    b.setAttribute('aria-label','Pass of '+fmtDay(sc.time));
+    b.className=(i===S.a?'a ':'')+(i===S.b?'b ':'')+(sc.ready?'ok':'');
+    b.onclick=function(e){stopPlay();if(e.shiftKey)setAB(i,S.b);else setAB(S.a,i);};
+    tl.appendChild(b);
+  });
+  [0,n-1].forEach(function(i,k){if(k&&n===1)return;var s=document.createElement('span');s.style.left=(k?100:0)+'%';s.style.transform=k?'translateX(-100%)':'none';s.textContent=fmtDay(S.scenes[i].time);tl.appendChild(s);});
+}
+function renderTags(){
+  var A=S.scenes[S.a],B=S.scenes[S.b],ta=$('tagA'),tb=$('tagB');
+  if(!A||!B){ta.hidden=tb.hidden=true;$('swipe').hidden=true;return;}
+  if(S.mode==='swipe'){ta.hidden=tb.hidden=false;ta.textContent='A / '+fmtDay(A.time);tb.textContent='B / '+fmtDay(B.time);}
+  else if(S.mode==='single'){ta.hidden=true;tb.hidden=false;tb.textContent=fmtDay(B.time);}
+  else{ta.hidden=false;tb.hidden=true;ta.textContent='Change / '+fmtDay(A.time)+' → '+fmtDay(B.time);}
+  $('swipe').hidden=S.mode!=='swipe';
+}
+function renderProv(){
+  var A=S.scenes[S.a],B=S.scenes[S.b];
+  if(!A||!B){$('prov').textContent='No passes loaded yet.';return;}
+  function line(tag,sc){return '<b style="color:var(--ink)">'+tag+'</b> '+sc.name+'<br>'+sc.pol+' · '+sc.col+' · <a href="'+sc.png+'" target="_blank" rel="noopener">browse PNG</a> · <a href="'+sc.h5+'" target="_blank" rel="noopener">full HDF5</a>';}
+  $('prov').innerHTML=line('A',A)+'<br><br>'+line('B',B);
+}
+function setMode(m){
+  S.mode=m;
+  Array.prototype.forEach.call(document.querySelectorAll('.modes button'),function(b){b.setAttribute('aria-pressed',b.dataset.mode===m?'true':'false');});
+  renderTags();syncHash();return showPasses();
+}
+function showPasses(){
+  var tok=S.token,need=S.mode==='single'?[S.b]:[S.a,S.b];
+  if(!S.scenes.length)return Promise.resolve();
+  busy('Loading NISAR pass '+need.map(function(i){return fmtDay(S.scenes[i].time);}).join(' + '));
+  return Promise.all(need.map(loadScene)).then(function(){
+    if(tok!==S.token)return;
+    if(S.mode==='change')return ensureChange();
+  }).then(function(){if(tok===S.token){busy('');invalidate();}}).catch(function(e){if(tok===S.token)busy(e.message,true);});
+}
+function setAB(a,b){
+  S.a=a;S.b=b;$('selA').value=a;$('selB').value=b;renderTimeline();renderTags();renderProv();syncHash();
+  return showPasses().then(function(){drawChart();writeInsight();});
+}
+function stopPlay(){if(S.playing){clearInterval(S.playing);S.playing=null;$('play').innerHTML='&#9654; Play the dance';}}
+$('play').onclick=function(){
+  if(S.playing){stopPlay();return;}
+  if(S.scenes.length<2)return;
+  setMode('single');$('play').innerHTML='&#9632; Stop';
+  var step=function(){var nx=(S.b+1)%S.scenes.length;loadScene(nx).then(function(){if(!S.playing)return;S.b=nx;$('selB').value=nx;renderTimeline();renderTags();renderProv();drawChart();invalidate();}).catch(function(){});};
+  S.playing=setInterval(step,1300);step();
+};
+Array.prototype.forEach.call(document.querySelectorAll('.modes button'),function(b){b.onclick=function(){stopPlay();setMode(b.dataset.mode);};});
+$('selA').onchange=function(){stopPlay();setAB(+this.value,S.b);};
+$('selB').onchange=function(){stopPlay();setAB(S.a,+this.value);};
+$('band').onchange=function(){S.band=this.value;if(S.mode==='change')showPasses();else S.change=null;};
+$('thr').oninput=function(){S.thr=+this.value;$('thrv').textContent=S.thr;if(S.mode==='change'&&S.change)renderChange();};
+$('opa').oninput=function(){S.opa=this.value/100;invalidate();};
+function setBase(v){S.base=v;$('base').value=v;$('att').textContent=BASES[v].att+' · Radar: NISAR (NASA/ISRO) via ASF DAAC';invalidate();}
+$('base').onchange=function(){setBase(this.value);};
+$('lab').onchange=function(){S.labels=this.checked;invalidate();};
+
+/* ---------- Choosing a place and a stack ---------- */
+function useStack(i){
+  var st=S.stacks[i];if(!st)return Promise.resolve();
+  stopPlay();
+  var tok=++S.token,want=S.want;S.want=null;
+  S.scenes=st.scenes;S.stackKey=st.key;S.change=null;S.hot=[];S.series=[];S.wx=null;S.pt=null;
+  $('stack').value=i;$('hot').innerHTML='';$('chart').hidden=true;$('csv').hidden=true;$('insight').textContent='';$('kPt').textContent='';$('pthint').hidden=false;$('stats').textContent='Open the Change view to compute it.';
+  $('stStack').textContent='T'+st.path+' / F'+st.frame+' / '+st.dir.slice(0,3);
+  busy('Reading footprints of '+st.scenes.length+' passes');
+  return Promise.all(st.scenes.map(function(sc){return sc.b?sc.b:sceneBounds(sc).then(function(b){sc.b=b;});})).then(function(){
+    if(tok!==S.token)return;
+    S.scenes=st.scenes.filter(function(sc){return sc.b;});
+    if(!S.scenes.length)throw new Error('No usable footprint for this track');
+    S.scenes.forEach(function(sc){sc.ready=false;sc.canvas=null;sc.cx=null;sc.loading=null;sc.failed=false;});
+    S.grid=makeGrid(S.scenes);
+    S.a=0;S.b=S.scenes.length-1;
+    if(want){S.scenes.forEach(function(sc,k){if(sc.day===want.a)S.a=k;if(sc.day===want.b)S.b=k;});S.mode=want.mode;}
+    $('stackinfo').textContent='L-band '+(S.scenes[0].pol||'')+' · '+S.scenes.length+' passes · '+fmtDay(S.scenes[0].time)+' to '+fmtDay(S.scenes[S.scenes.length-1].time)+(st.skipped?'. Left out '+st.skipped+' single-polarisation pass'+(st.skipped>1?'es.':'.'):'')+(S.scenes[0].b.approx?' Position estimated from the footprint.':'');
+    renderDates();fit();
+    return setMode(S.mode).then(function(){if(tok===S.token)preloadRest(tok);});
+  }).catch(function(e){if(tok===S.token)busy(e.message,true);});
+}
+function preloadRest(tok){
+  var i=0;
+  (function next(){
+    if(tok!==S.token)return;
+    while(i<S.scenes.length&&(S.scenes[i].ready||S.scenes[i].failed))i++;
+    if(i>=S.scenes.length)return;
+    loadScene(i).then(next,next);
+  })();
+}
+function goTo(lat,lon,want){
+  if(!(lat>=-85&&lat<=85&&lon>=-180&&lon<=180)){busy('Type coordinates as: latitude, longitude',true);return Promise.resolve();}
+  stopPlay();
+  S.lat=lat;S.lon=lon;++S.token;S.want=want||null;
+  $('coord').value=lat.toFixed(3)+', '+lon.toFixed(3);$('kPlace').textContent=ll(lat,lon);
+  busy('Searching the NISAR archive at '+ll(lat,lon));
+  return searchStacks(lon,lat).then(function(st){
+    S.stacks=st;renderStacks();$('stLink').textContent='ASF DAAC online';
+    if(!st.length){S.scenes=[];S.grid=null;renderDates();$('stackinfo').textContent='';flyTo(lat,lon,6);busy('No public NISAR GCOV passes cover this point yet. Try another place.',true);return;}
+    var idx=0;
+    if(want)st.forEach(function(x,k){if(x.key===want.key)idx=k;});
+    return useStack(idx);
+  }).catch(function(e){$('stLink').textContent='ASF DAAC unreachable';busy('NISAR search failed: '+e.message,true);});
+}
+(function(){
+  var p=$('preset');
+  PRESETS.forEach(function(x,i){var o=document.createElement('option');o.value=i;o.textContent=x.n;p.appendChild(o);});
+  var c=document.createElement('option');c.value='';c.textContent='Custom coordinates';c.hidden=true;p.appendChild(c);
+  p.onchange=function(){var x=PRESETS[+this.value];if(x)goTo(x.lat,x.lon);};
+})();
+function parseCoord(){var m=($('coord').value||'').match(/-?\d+(\.\d+)?/g);if(!m||m.length<2){busy('Type coordinates as: latitude, longitude',true);return;}$('preset').value='';goTo(+m[0],+m[1]);}
+$('go').onclick=parseCoord;
+$('coord').addEventListener('keydown',function(e){if(e.key==='Enter')parseCoord();});
+$('here').onclick=function(){$('preset').value='';goTo(ilat(S.view.cy),ilon(S.view.cx));};
+$('stack').onchange=function(){useStack(+this.value);};
+
+/* ---------- Ask a point: radar time series + NASA POWER weather ---------- */
+function sample(sc,i,j){
+  var d=sc.cx.getImageData(i-2,j-2,5,5).data,n=0,hh=0,hv=0,o;
+  for(o=0;o<d.length;o+=4){if(d[o+3]<128)continue;hh+=d[o];hv+=d[o+1];n++;}
+  return n?{hh:hh/n-sc.med.hh,hv:hv/n-sc.med.hv}:null;
+}
+function fetchPower(lat,lon){
+  var t0=Date.parse(S.scenes[0].time)-10*864e5,t1=Math.min(Date.now(),Date.parse(S.scenes[S.scenes.length-1].time)+864e5);
+  var u=POWER+'?parameters=T2M,T2M_MIN,T2M_MAX,PRECTOTCORR&community=AG&longitude='+lon.toFixed(3)+'&latitude='+lat.toFixed(3)+'&start='+ymd(t0)+'&end='+ymd(t1)+'&format=JSON';
+  return fetch(u).then(function(r){if(!r.ok)throw new Error('NASA POWER answered HTTP '+r.status);return r.json();}).then(function(j){
+    var P=j.properties&&j.properties.parameter;if(!P||!P.T2M)throw new Error('NASA POWER returned no data');
+    function v(x){return (x===undefined||x<=-900)?null:x;}
+    return Object.keys(P.T2M).sort().map(function(k){
+      return {t:Date.UTC(+k.slice(0,4),+k.slice(4,6)-1,+k.slice(6,8)),tavg:v(P.T2M[k]),tmin:v(P.T2M_MIN&&P.T2M_MIN[k]),tmax:v(P.T2M_MAX&&P.T2M_MAX[k]),rain:v(P.PRECTOTCORR&&P.PRECTOTCORR[k])};
+    });
+  });
+}
+function inspect(lon,lat){
+  var g=S.grid;if(!g||!S.scenes.length)return;
+  var i=Math.floor((mx(lon)-g.x0)/(g.x1-g.x0)*g.W),j=Math.floor((my(lat)-g.y0)/(g.y1-g.y0)*g.H);
+  if(i<0||j<0||i>=g.W||j>=g.H){busy('Click inside the radar footprint.',true);setTimeout(function(){busy('');},1600);return;}
+  var tok=S.token;
+  S.pt={lon:lon,lat:lat,i:i,j:j};S.series=[];S.wx=null;
+  $('pthint').hidden=true;$('chart').hidden=false;$('csv').hidden=false;$('kPt').textContent=ll(lat,lon);
+  $('insight').textContent='Reading this spot in every pass.';
+  invalidate();drawChart();
+  var pt=S.pt;
+  S.scenes.forEach(function(sc,k){
+    loadScene(k).then(function(){if(S.pt!==pt||tok!==S.token)return;S.series[k]=sample(sc,i,j);drawChart();writeInsight();}).catch(function(){});
+  });
+  fetchPower(lat,lon).then(function(wx){if(S.pt!==pt||tok!==S.token)return;S.wx=wx;drawChart();writeInsight();}).catch(function(e){if(S.pt===pt){S.wx={error:e.message};writeInsight();}});
+}
+function rainBefore(t,days){
+  if(!S.wx||!S.wx.length)return null;
+  var day=Math.floor(t/864e5)*864e5,sum=0,n=0;
+  S.wx.forEach(function(d){if(d.t<day&&d.t>=day-days*864e5&&d.rain!==null){sum+=d.rain;n++;}});
+  return n?sum:null;
+}
+function tminOn(t){
+  if(!S.wx||!S.wx.length)return null;
+  var day=Math.floor(t/864e5)*864e5,r=null;
+  S.wx.forEach(function(d){if(d.t===day)r=d.tmin;});
+  return r;
+}
+function writeInsight(){
+  var el=$('insight');if(!S.pt)return;
+  var A=S.scenes[S.a],B=S.scenes[S.b],sa=S.series[S.a],sb=S.series[S.b];
+  if(!sa||!sb){el.textContent=(S.series[S.a]===null||S.series[S.b]===null)?'This point has no radar data in pass A or B.':'Loading passes.';return;}
+  function sg(q){return (q>0?'+':'')+q.toFixed(0);}
+  var dhh=sb.hh-sa.hh,dhv=sb.hv-sa.hv,txt='Against each scene median, HH went '+sg(sa.hh)+' → '+sg(sb.hh)+' and HV '+sg(sa.hv)+' → '+sg(sb.hv)+' from A to B (browse units, 0–255 scale). ';
+  if(S.wx&&S.wx.error){txt+='Weather is unavailable ('+S.wx.error+').';}
+  else if(S.wx){
+    var ra=rainBefore(Date.parse(A.time),3),rb=rainBefore(Date.parse(B.time),3),ta=tminOn(Date.parse(A.time)),tb=tminOn(Date.parse(B.time));
+    if(ra!==null&&rb!==null)txt+='NASA POWER rain in the 3 days before each pass: '+ra.toFixed(1)+' mm (A), '+rb.toFixed(1)+' mm (B). ';
+    if(ta!==null&&tb!==null)txt+='Night minimum: '+ta.toFixed(1)+' °C (A), '+tb.toFixed(1)+' °C (B). ';
+    var d=(dhh+dhv)/2,hint='';
+    if(tb!==null&&ta!==null&&tb<-1&&ta>1&&dhh<-8&&dhv<-8)hint='The ground was probably frozen at B and not at A, which darkens the echo.';
+    else if(ra!==null&&rb!==null&&rb-ra>3&&d>8)hint='More rain before B fits a brighter echo from wetter soil.';
+    else if(ra!==null&&rb!==null&&ra-rb>3&&d<-8)hint='More rain before A fits a darker echo at B as the soil dried.';
+    else if(dhv<-12&&dhh>-6)hint='HV fell while HH held, which fits less standing vegetation, for example after harvest.';
+    else if(dhv>12&&dhh<6)hint='HV rose while HH held, which fits more vegetation volume.';
+    else if(Math.abs(d)<=8)hint='That is within the noise of browse imagery: no clear change here.';
+    if(hint)txt+=hint+' A hint, not proof.';
+  }else txt+='Fetching NASA POWER weather.';
+  el.textContent=txt;
+}
+$('csv').onclick=function(){
+  if(!S.pt)return;
+  var rows=['date_utc,granule,hh_minus_scene_median,hv_minus_scene_median,rain_3d_before_mm,night_min_c'];
+  S.scenes.forEach(function(sc,k){
+    var s=S.series[k],t=Date.parse(sc.time),r=rainBefore(t,3),m=tminOn(t);
+    rows.push([sc.time,sc.name,s?s.hh.toFixed(1):'',s?s.hv.toFixed(1):'',r===null?'':r.toFixed(2),m===null?'':m.toFixed(2)].join(','));
+  });
+  rows.push('# point,'+S.pt.lat.toFixed(4)+','+S.pt.lon.toFixed(4)+',radar: NISAR GCOV browse via ASF DAAC,weather: NASA POWER');
+  download('aua-jer-point.csv',new Blob([rows.join('\n')],{type:'text/csv'}));
+};
+function drawChart(){
+  var c=$('chart');if(c.hidden||!S.scenes.length)return;
+  var dpr=Math.min(2,window.devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight;
+  if(!w)return;
+  c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);
+  var x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);
+  var n=S.scenes.length,t0=Date.parse(S.scenes[0].time)-10*864e5,t1=Date.parse(S.scenes[n-1].time)+3*864e5;
+  var L=30,R=w-34,T1=20,B1=Math.round(h*0.48),T2=Math.round(h*0.62),B2=h-18;
+  function X(t){return L+(t-t0)/(t1-t0)*(R-L);}
+  x.font='9.5px ui-monospace,Menlo,Consolas,monospace';x.textBaseline='middle';
+  var d=new Date(t0);d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1));
+  x.strokeStyle='rgba(255,255,255,.12)';x.fillStyle='#8b9098';x.lineWidth=1;x.textAlign='center';
+  while(d.getTime()<t1){var gx=Math.round(X(d.getTime()))+0.5;x.beginPath();x.moveTo(gx,T1);x.lineTo(gx,B2);x.stroke();x.fillText(d.toLocaleDateString('en-GB',{month:'short',timeZone:'UTC'}).toUpperCase(),gx,h-7);d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1));}
+  x.strokeStyle='rgba(255,255,255,.3)';x.strokeRect(L+0.5,T1+0.5,R-L,B1-T1);x.strokeRect(L+0.5,T2+0.5,R-L,B2-T2);
+  [[S.a,'#4aa8ff','A'],[S.b,'#ffa62b','B']].forEach(function(m){var sc=S.scenes[m[0]];if(!sc)return;var gx=Math.round(X(Date.parse(sc.time)))+0.5;x.strokeStyle=m[1];x.setLineDash([3,3]);x.beginPath();x.moveTo(gx,T1);x.lineTo(gx,B2);x.stroke();x.setLineDash([]);x.fillStyle=m[1];x.textAlign='center';x.fillText(m[2],gx,B1+9);});
+  var lo=255,hi=0;
+  S.series.forEach(function(s){if(!s)return;lo=Math.min(lo,s.hh,s.hv);hi=Math.max(hi,s.hh,s.hv);});
+  if(lo>hi){lo=-30;hi=30;}
+  lo=Math.floor(lo/10)*10-10;hi=Math.ceil(hi/10)*10+10;
+  function Y1(v){return B1-(v-lo)/(hi-lo)*(B1-T1);}
+  x.fillStyle='#8b9098';x.textAlign='right';x.fillText((hi>0?'+':'')+hi,L-5,T1+4);x.fillText((lo>0?'+':'')+lo,L-5,B1-3);
+  if(lo<0&&hi>0){var y0=Math.round(Y1(0))+0.5;x.strokeStyle='rgba(255,255,255,.45)';x.setLineDash([2,3]);x.beginPath();x.moveTo(L,y0);x.lineTo(R,y0);x.stroke();x.setLineDash([]);}
+  x.textAlign='left';x.fillStyle='#c9cdd3';x.fillText('RADAR ECHO VS SCENE MEDIAN',L,T1-10);
+  [['hh','#ec74dc'],['hv','#74dd74']].forEach(function(b){
+    x.strokeStyle=b[1];x.fillStyle=b[1];x.lineWidth=1.6;x.beginPath();var st=false;
+    S.scenes.forEach(function(sc,k){var s=S.series[k];if(!s)return;var px=X(Date.parse(sc.time)),py=Y1(s[b[0]]);if(st)x.lineTo(px,py);else{x.moveTo(px,py);st=true;}});
+    x.stroke();
+    S.scenes.forEach(function(sc,k){var s=S.series[k];if(!s)return;x.beginPath();x.arc(X(Date.parse(sc.time)),Y1(s[b[0]]),3,0,7);x.fill();});
+  });
+  x.textAlign='right';x.fillStyle='#ec74dc';x.fillText('HH',R-24,T1-10);x.fillStyle='#74dd74';x.fillText('HV',R,T1-10);
+  x.textAlign='left';x.fillStyle='#c9cdd3';x.fillText('NASA POWER  AIR TEMP °C',L,T2-10);x.textAlign='right';x.fillStyle='#4aa8ff';x.fillText('RAIN MM/DAY',R,T2-10);
+  if(S.wx&&S.wx.length){
+    var tl=99,th=-99,rm=1;
+    S.wx.forEach(function(q){if(q.tmin!==null)tl=Math.min(tl,q.tmin);if(q.tmax!==null)th=Math.max(th,q.tmax);if(q.rain!==null)rm=Math.max(rm,q.rain);});
+    if(tl>th){tl=-10;th=30;}
+    tl=Math.floor(tl/5)*5;th=Math.ceil(th/5)*5;if(th===tl)th=tl+5;
+    var Y2=function(v){return B2-(v-tl)/(th-tl)*(B2-T2);};
+    var bw=Math.max(1,(R-L)/((t1-t0)/864e5)-0.5);
+    x.fillStyle='rgba(74,168,255,.6)';
+    S.wx.forEach(function(q){if(q.rain===null||q.rain<=0)return;var bh=q.rain/rm*(B2-T2)*0.9;x.fillRect(X(q.t)-bw/2,B2-bh,bw,bh);});
+    x.fillStyle='rgba(255,166,43,.14)';x.beginPath();var first=true;
+    S.wx.forEach(function(q){if(q.tmax===null)return;if(first){x.moveTo(X(q.t),Y2(q.tmax));first=false;}else x.lineTo(X(q.t),Y2(q.tmax));});
+    for(var k=S.wx.length-1;k>=0;k--){var q=S.wx[k];if(q.tmin===null)continue;x.lineTo(X(q.t),Y2(q.tmin));}
+    if(!first){x.closePath();x.fill();}
+    x.strokeStyle='#ffa62b';x.lineWidth=1.4;x.beginPath();first=true;
+    S.wx.forEach(function(q){if(q.tavg===null)return;if(first){x.moveTo(X(q.t),Y2(q.tavg));first=false;}else x.lineTo(X(q.t),Y2(q.tavg));});
+    x.stroke();
+    if(tl<0&&th>0){var zy=Math.round(Y2(0))+0.5;x.strokeStyle='#fff';x.lineWidth=1;x.setLineDash([2,3]);x.beginPath();x.moveTo(L,zy);x.lineTo(R,zy);x.stroke();x.setLineDash([]);}
+    x.fillStyle='#8b9098';x.textAlign='right';x.fillText(th,L-5,T2+4);x.fillText(tl,L-5,B2-3);
+    x.textAlign='left';x.fillStyle='#4aa8ff';x.fillText(rm.toFixed(0),R+5,T2+4);x.fillText('0',R+5,B2-3);
+  }else{x.fillStyle='#8b9098';x.textAlign='left';x.fillText(S.wx&&S.wx.error?'UNAVAILABLE':'LOADING',L+8,(T2+B2)/2);}
+}
+
+/* ---------- Hero, navigation, status line ---------- */
+function enter(){$('hero').classList.add('off');}
+$('start').onclick=enter;
+$('howto').onclick=function(){enter();openSec('dMethod');};
+function openSec(id){var d=$(id);d.open=true;d.scrollIntoView({behavior:'smooth',block:'start'});}
+$('home').onclick=function(e){e.preventDefault();$('hero').classList.remove('off');};
+Array.prototype.forEach.call(document.querySelectorAll('nav a'),function(a){a.onclick=function(e){
+  e.preventDefault();enter();
+  var g=a.dataset.go;
+  if(g==='explore')$('sPlace').scrollIntoView({behavior:'smooth',block:'start'});
+  else if(g==='method')openSec('dMethod');
+  else if(g==='data')openSec('dData');
+  else $('team').scrollIntoView({behavior:'smooth',block:'end'});
+};});
+function tick(){$('stTime').textContent=new Date().toISOString().slice(11,19);}
+setInterval(tick,1000);tick();
+
+/* ---------- Start ---------- */
+window.addEventListener('resize',function(){resize();drawChart();});
+setBase('night');setSwipe(0.5);resize();
+window.AuaJer={state:S,goTo:goTo,setAB:setAB,setMode:setMode,inspect:inspect,fit:fit,flyTo:flyTo,enter:enter};
+var h0=readHash();
+if(h0){enter();goTo(h0.lat,h0.lon,{key:h0.key,a:h0.a,b:h0.b,mode:h0.mode});}
+else goTo(PRESETS[0].lat,PRESETS[0].lon);
+})();
+</script>
+</body>
+</html>
