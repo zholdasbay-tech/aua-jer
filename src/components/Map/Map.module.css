@@ -1,0 +1,73 @@
+.stage { position: relative; overflow: hidden; background: var(--bg); min-height: 360px; }
+.map { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; display: block; }
+.stage:after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 45%, transparent 60%, rgba(0, 2, 8, 0.55) 100%); }
+.cn { position: absolute; width: 22px; height: 22px; border: 1px solid var(--line2); pointer-events: none; z-index: 2; }
+.cnA { left: 12px; top: 12px; border-right: 0; border-bottom: 0; }
+.cnB { right: 12px; top: 12px; border-left: 0; border-bottom: 0; }
+.cnC { left: 12px; bottom: 12px; border-right: 0; border-top: 0; }
+.cnD { right: 12px; bottom: 12px; border-left: 0; border-top: 0; }
+.prog { position: absolute; left: 0; top: 0; height: 2px; width: 0; background: linear-gradient(90deg, transparent, var(--ice), #fff); box-shadow: 0 0 12px var(--ice); transition: width 0.4s, opacity 0.6s; z-index: 4; }
+
+.glass { background: rgba(4, 8, 20, 0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--line); }
+.tag { position: absolute; top: 24px; z-index: 3; padding: 8px 12px; border-radius: 8px; font: 500 var(--fs-xs)/1.2 var(--sans); color: var(--ink); pointer-events: none; display: flex; align-items: center; gap: 4px; }
+.tagA { left: 24px; }
+.tagB { right: 78px; }
+.tagBlink { transition: border-color 0.2s; }
+.tagBlink.phaseB { border-color: rgba(255, 166, 43, 0.5); }
+
+.swipe { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: linear-gradient(180deg, transparent, #fff 12%, #fff 88%, transparent); box-shadow: 0 0 14px rgba(124, 196, 255, 0.9); z-index: 3; }
+.knob {
+  position: absolute; top: 50%; left: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(4, 10, 24, 0.9); color: #fff; border: 1.5px solid #fff;
+  cursor: ew-resize; touch-action: none; padding: 0; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 6px rgba(124, 196, 255, 0.12), 0 0 26px rgba(124, 196, 255, 0.6);
+}
+.knob svg { width: 20px; height: 20px; }
+
+.tools { position: absolute; right: 22px; top: 24px; display: grid; gap: 6px; z-index: 3; }
+.tools :global(.btn) { width: 42px; height: 42px; min-height: 0; padding: 0; background: rgba(4, 8, 20, 0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.tools hr { border: 0; height: 1px; background: var(--line); margin: 2px 6px; }
+
+.layers { position: absolute; left: 24px; bottom: 50px; z-index: 3; max-width: calc(100% - 320px); display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; border-radius: 12px; padding: 8px 12px; font: 500 var(--fs-xs)/1.2 var(--sans); color: var(--mut); }
+.layers label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.layers select { width: auto; min-height: 30px; padding: 4px 30px 4px 10px; border-radius: 8px; font-size: var(--fs-xs); }
+.layers input[type="range"] { width: 90px; }
+
+.legend { position: absolute; right: 22px; bottom: 50px; z-index: 3; width: 260px; border-radius: 12px; padding: 11px 13px 10px; font: 500 var(--fs-xs)/1.3 var(--sans); color: var(--mut); }
+.legend .bar { height: 8px; border-radius: 4px; margin: 8px 0 6px; background: linear-gradient(90deg, #4aa8ff, #1d3d66 38%, #4a4f5a 45%, #4a4f5a 55%, #6b4a1e 62%, #ffa62b); }
+.legend .lab { display: flex; justify-content: space-between; }
+.legend .lab b { color: var(--ink); font-weight: 500; }
+
+.hud { position: absolute; left: 24px; right: 24px; bottom: 18px; z-index: 3; display: flex; justify-content: space-between; gap: 12px; font: 500 11.5px/1.3 var(--mono); color: #aab6cc; pointer-events: none; text-shadow: 0 1px 2px #000; }
+.hud b { color: #fff; font-weight: 500; }
+.hud .sep { opacity: 0.5; margin: 0 6px; }
+
+.busy {
+  position: absolute; left: 50%; top: 24px; z-index: 4; transform: translateX(-50%); display: flex; align-items: center; gap: 10px;
+  background: rgba(4, 8, 20, 0.92); border: 1px solid var(--line2); border-radius: 999px; padding: 9px 16px; font: 500 var(--fs-xs)/1.3 var(--sans);
+  max-width: 70%; text-align: center; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4); animation: rise 0.2s;
+}
+.busy:before { content: ""; width: 12px; height: 12px; flex: none; border-radius: 50%; border: 2px solid rgba(124, 196, 255, 0.25); border-top-color: var(--ice); animation: spin 0.8s linear infinite; }
+.busy.err { border-color: #e06565; color: #ffc3c3; }
+.busy.err:before { content: "!"; border: 0; width: auto; height: auto; font-weight: 700; animation: none; }
+.busy.ok:before { content: "✓"; border: 0; width: auto; height: auto; color: var(--ice); animation: none; }
+
+.menu { position: absolute; z-index: 8; min-width: 230px; border-radius: 12px; padding: 6px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55); animation: rise 0.15s; }
+.menuHead { padding: 8px 10px 6px; font: 500 var(--fs-xs)/1.4 var(--sans); color: var(--mut); border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.menuHead b { display: block; color: var(--ink); font-family: var(--mono); font-weight: 500; }
+.menu button { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: var(--ink); font: 500 var(--fs-s)/1.2 var(--sans); text-align: left; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+.menu button:hover, .menu button:focus-visible { background: rgba(124, 196, 255, 0.12); }
+.menu button svg { color: var(--ice); }
+
+@media (max-width: 980px) {
+  .stage { height: 70vh; height: 70svh; min-height: 560px; }
+  .hud, .legend, .cn { display: none; }
+  .layers { left: 12px; bottom: 12px; max-width: calc(100% - 24px); gap: 6px 10px; padding: 6px 8px; }
+  .layers input[type="range"] { width: 64px; }
+  .tools { right: 12px; top: 12px; }
+  .tools :global(.btn) { width: 40px; height: 40px; }
+  .tagA { left: 12px; top: 12px; }
+  .tagB { right: 62px; top: 12px; }
+  .tag { font-size: 11px; padding: 6px 9px; }
+  .busy { max-width: 86%; top: 60px; }
+}
+@media (max-width: 420px) { .layers .opa { display: none; } }
