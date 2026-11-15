@@ -224,13 +224,14 @@ summary{cursor:pointer;font:10px var(--mono);letter-spacing:.22em;text-transform
       <li><b style="color:var(--hh)">HH</b> is strong over rough or wet ground and over buildings. <b style="color:var(--hv)">HV</b> comes from scattering inside vegetation.</li>
       <li>An echo usually gets <b style="color:var(--up)">brighter</b> when soil gets wetter, crops grow or a field is ploughed rough. It gets <b style="color:var(--down)">darker</b> when soil dries, crops are harvested, calm open water appears, or the ground freezes.</li>
       <li>One change on the map can have several causes. The weather chart is a hint, not proof.</li>
+      <li>Watch for artefacts. A bright halo that switches on and off around a big city from pass to pass is an imaging effect, most likely radio interference, and not a change on the ground. Around Astana it is present in 4 of the 10 passes.</li>
     </ul></div>
   </details>
   <details id="dData">
     <summary>Data and limits</summary>
     <div class="more"><ul>
       <li>Radar: NISAR L2 GCOV browse images (HH and HV), streamed live from NASA's Alaska Satellite Facility DAAC and found with the ASF Search API.</li>
-      <li>Browse images are about 200 m per pixel and 8-bit, scaled for display. The change map is a relative difference after removing the scene-wide median. It is not calibrated backscatter in dB. Point charts are relative to each scene's median for the same reason, so a change across the whole scene cannot be told apart from display scaling.</li>
+      <li>Browse images are about 200 m per pixel and 8-bit, scaled for display. The change map is a relative difference after removing the scene-wide median and aligning the two passes to the nearest pixel. It is not calibrated backscatter in dB. Point charts are relative to each scene's median for the same reason, so a change across the whole scene cannot be told apart from display scaling.</li>
       <li>Weather: NASA POWER daily values (MERRA-2 and GEOS) at the clicked coordinates. It is a model grid, not a station.</li>
       <li>Base maps: NASA GIBS Black Marble and Blue Marble, or OpenStreetMap. City markers are approximate.</li>
       <li>Next step: read the full-resolution GCOV HDF5 products for calibrated gamma-nought, and add ground readings from the Aua phone-barometer network.</li>
@@ -387,16 +388,33 @@ function bandVal(d,o,band){return band==='hh'?d[o]:(band==='hv'?d[o+1]:((d[o]+d[
 function computeChange(){
   var A=S.scenes[S.a],B=S.scenes[S.b],g=S.grid;
   if(!A||!B||!A.ready||!B.ready||S.a===S.b){S.change=null;return;}
-  var n=g.W*g.H,diff=new Int16Array(n),hist=new Uint32Array(511),valid=0,p,o,d,a=pixels(A),b=pixels(B),band=S.band;
-  for(p=0;p<n;p++){
-    o=p*4;
-    if(a[o+3]<128||b[o+3]<128){diff[p]=-32768;continue;}
-    d=bandVal(b,o,band)-bandVal(a,o,band);diff[p]=d;hist[d+255]++;valid++;
+  var n=g.W*g.H,diff=new Int16Array(n),bg=new Uint8Array(n),hist=new Uint32Array(511),valid=0,p,o,q,d,i,j,a=pixels(A),b=pixels(B),band=S.band;
+  var sh=bestShift(a,b,g);
+  for(j=0;j<g.H;j++)for(i=0;i<g.W;i++){
+    p=j*g.W+i;o=p*4;
+    if(i+sh.dx<0||i+sh.dx>=g.W||j+sh.dy<0||j+sh.dy>=g.H){diff[p]=-32768;continue;}
+    q=((j+sh.dy)*g.W+i+sh.dx)*4;
+    if(a[o+3]<128||b[q+3]<128){diff[p]=-32768;continue;}
+    d=bandVal(b,q,band)-bandVal(a,o,band);diff[p]=d;bg[p]=(b[q]+b[q+1])>>1;hist[d+255]++;valid++;
   }
   var half=valid/2,acc=0,med=0;
   for(p=0;p<511;p++){acc+=hist[p];if(acc>=half){med=p-255;break;}}
-  S.change={diff:diff,med:med,valid:valid,bdata:b,key:S.a+'|'+S.b+'|'+band,canvas:null};
+  S.change={diff:diff,med:med,valid:valid,bg:bg,sh:sh,key:S.a+'|'+S.b+'|'+band,canvas:null};
   findHotspots();renderChange();
+}
+/* Co-register B to A: try whole-pixel shifts up to 2 px and keep the one with the smallest mean HH difference. */
+function bestShift(a,b,g){
+  var best=1e18,bx=0,by=0,dx,dy,i,j,s,n,o,q;
+  for(dy=-2;dy<=2;dy++)for(dx=-2;dx<=2;dx++){
+    s=0;n=0;
+    for(j=4;j<g.H-4;j+=7)for(i=4;i<g.W-4;i+=7){
+      o=(j*g.W+i)*4;q=((j+dy)*g.W+i+dx)*4;
+      if(a[o+3]<128||b[q+3]<128)continue;
+      s+=Math.abs(b[q]-a[o]);n++;
+    }
+    if(n>500&&s/n<best-1e-9){best=s/n;bx=dx;by=dy;}
+  }
+  return {dx:bx,dy:by};
 }
 function findHotspots(){
   var ch=S.change,g=S.grid,bx=Math.floor(g.W/BS),by=Math.floor(g.H/BS),list=[],X,Y,i,j,d,sum,n;
@@ -428,13 +446,13 @@ function findHotspots(){
 function renderChange(){
   var ch=S.change,g=S.grid;
   if(!ch)return;
-  var B=ch.bdata,out=new ImageData(g.W,g.H),od=out.data,T=S.thr,up=0,down=0,upA=0,downA=0,j,i,p,o,d,gray,t;
+  var out=new ImageData(g.W,g.H),od=out.data,T=S.thr,up=0,down=0,upA=0,downA=0,j,i,p,o,d,gray,t;
   var dlon=(g.e-g.w)/g.W*111.32;
   for(j=0;j<g.H;j++){
     var side=dlon*Math.cos(ilat(g.y0+(j+0.5)/g.H*(g.y1-g.y0))*Math.PI/180),cell=side*side;
     for(i=0;i<g.W;i++){
       p=j*g.W+i;d=ch.diff[p];if(d===-32768)continue;
-      o=p*4;d-=ch.med;gray=14+0.4*((B[o]+B[o+1])>>1);
+      o=p*4;d-=ch.med;gray=14+0.4*ch.bg[p];
       if(d>T){t=Math.min(1,0.5+(d-T)/60);od[o]=gray+(255-gray)*t;od[o+1]=gray+(166-gray)*t;od[o+2]=gray+(43-gray)*t;up++;upA+=cell;}
       else if(d<-T){t=Math.min(1,0.5+(-d-T)/60);od[o]=gray+(74-gray)*t;od[o+1]=gray+(168-gray)*t;od[o+2]=gray+(255-gray)*t;down++;downA+=cell;}
       else{od[o]=gray;od[o+1]=gray;od[o+2]=gray;}
@@ -444,7 +462,7 @@ function renderChange(){
   if(!ch.canvas){ch.canvas=document.createElement('canvas');ch.canvas.width=g.W;ch.canvas.height=g.H;}
   ch.canvas.getContext('2d').putImageData(out,0,0);
   var pu=100*up/ch.valid,pd=100*down/ch.valid;
-  $('stats').innerHTML='<b style="color:var(--up)">'+pu.toFixed(1)+'%</b> of the overlap got brighter, about <b>'+Math.round(upA).toLocaleString('en-US')+' km²</b>. <b style="color:var(--down)">'+pd.toFixed(1)+'%</b> got darker, about <b>'+Math.round(downA).toLocaleString('en-US')+' km²</b>. Scene-wide median shift removed: <b>'+(ch.med>0?'+':'')+ch.med+'</b>. Strongest 8 km blocks:';
+  $('stats').innerHTML='<b style="color:var(--up)">'+pu.toFixed(1)+'%</b> of the overlap got brighter, about <b>'+Math.round(upA).toLocaleString('en-US')+' km²</b>. <b style="color:var(--down)">'+pd.toFixed(1)+'%</b> got darker, about <b>'+Math.round(downA).toLocaleString('en-US')+' km²</b>. Removed first: a scene-wide median shift of <b>'+(ch.med>0?'+':'')+ch.med+'</b> and a pass-to-pass offset of <b>'+ch.sh.dx+', '+ch.sh.dy+' px</b>. Strongest 8 km blocks:';
   invalidate();
 }
 function ensureChange(){
@@ -802,6 +820,7 @@ function writeInsight(){
     if(tb!==null&&ta!==null&&tb<-1&&ta>1&&dhh<-8&&dhv<-8)hint='The ground was probably frozen at B and not at A, which darkens the echo.';
     else if(ra!==null&&rb!==null&&rb-ra>3&&d>8)hint='More rain before B fits a brighter echo from wetter soil.';
     else if(ra!==null&&rb!==null&&ra-rb>3&&d<-8)hint='More rain before A fits a darker echo at B as the soil dried.';
+    else if(ra!==null&&rb!==null&&rb<=ra+1&&dhh>20)hint='HH rose although it was not wetter before B, which points to the surface itself changing, for example tillage after harvest.';
     else if(dhv<-12&&dhh>-6)hint='HV fell while HH held, which fits less standing vegetation, for example after harvest.';
     else if(dhv>12&&dhh<6)hint='HV rose while HH held, which fits more vegetation volume.';
     else if(Math.abs(d)<=8)hint='That is within the noise of browse imagery: no clear change here.';
