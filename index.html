@@ -5,215 +5,320 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aua Jer — NISAR surface-change explorer</title>
 <meta name="description" content="Compare two NISAR L-band radar passes anywhere on Earth, map what changed on the ground, and check NASA POWER weather for the reason.">
+<meta name="theme-color" content="#02040a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2302040a'/%3E%3Cpath d='M4 20c5-7 9-7 13-2s8 4 11-3' fill='none' stroke='%237cc4ff' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='23' cy='8' r='3' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#000;--ink:#f4f4f2;--mut:#8b9098;--dim:#5d626a;--line:rgba(255,255,255,.14);--line2:rgba(255,255,255,.3);--amber:#f5a524;--hh:#ec74dc;--hv:#74dd74;--up:#ffa62b;--down:#4aa8ff;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:"Space Grotesk",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+:root{
+  --bg:#02040a;--bg2:#060b18;--panel:#050913;--ink:#eef3ff;--mut:#8994ab;--dim:#566079;
+  --line:rgba(140,180,255,.13);--line2:rgba(160,200,255,.32);
+  --ice:#7cc4ff;--ice2:#b9e0ff;--glow:0 0 0 1px rgba(124,196,255,.35),0 0 24px rgba(80,150,255,.35);
+  --hh:#ec74dc;--hv:#74dd74;--up:#ffa62b;--down:#4aa8ff;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"Space Grotesk",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --r:10px;
+}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
-#app{display:grid;grid-template-columns:minmax(0,1fr) 404px;grid-template-rows:56px minmax(0,1fr) 28px;height:100vh;height:100dvh}
-.mono,.k,nav a,button,select,input,.chip,.tag,#hudtxt,#status,.modes button{font-family:var(--mono)}
-/* top bar */
-#top{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:0 18px;border-bottom:1px solid var(--line);background:#000}
-.logo{display:flex;align-items:center;gap:10px;font:500 17px/1 var(--sans);letter-spacing:.14em;color:var(--ink);text-decoration:none}
-nav{display:flex;gap:26px;margin:0 auto}
-nav a{font-size:10.5px;letter-spacing:.2em;color:var(--mut);text-decoration:none;text-transform:uppercase;padding:8px 0;border-bottom:1px solid transparent}
-nav a:hover,nav a:focus-visible{color:var(--ink);border-bottom-color:var(--line2)}
-button,select,input[type=text]{font-size:11px;letter-spacing:.06em;color:var(--ink);background:#000;border:1px solid var(--line);border-radius:2px;padding:9px 11px;min-height:38px}
-button{cursor:pointer;text-transform:uppercase;letter-spacing:.14em}
-button:hover{border-color:var(--line2)}
-button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:1px solid var(--amber);outline-offset:2px}
-.solid{background:var(--ink);color:#000;border-color:var(--ink);font-weight:700}
-.solid:hover{background:#fff}
-.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--amber);margin-right:9px;vertical-align:1px}
-select{width:100%}
-/* stage */
-#stage{position:relative;overflow:hidden;background:#000;min-height:340px}
+::selection{background:rgba(124,196,255,.35)}
+#app{display:grid;grid-template-columns:minmax(0,1fr) 412px;grid-template-rows:60px minmax(0,1fr) 30px;height:100vh;height:100dvh}
+.mono,.k,nav a,.btn,select,input,.chip,.tag,#hudtxt,#status,.seg button,.kbd{font-family:var(--mono)}
+svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- top bar ---------- */
+#top{grid-column:1/-1;display:flex;align-items:center;gap:28px;padding:0 18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#040814,#02040a)}
+.logo{display:flex;align-items:center;gap:11px;font:600 16px/1 var(--sans);letter-spacing:.16em;color:var(--ink);text-decoration:none}
+.logo small{font:500 10px var(--mono);letter-spacing:.18em;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:4px 8px}
+nav{display:flex;gap:6px;margin:0 auto}
+nav a{font-size:10.5px;letter-spacing:.2em;color:var(--mut);text-decoration:none;text-transform:uppercase;padding:9px 13px;border-radius:999px;transition:color .2s,background .2s}
+nav a:hover,nav a:focus-visible{color:var(--ink);background:rgba(124,196,255,.08)}
+
+/* ---------- buttons ---------- */
+.btn,select,input[type=text]{font-size:11px;letter-spacing:.06em;color:var(--ink);background:rgba(10,18,36,.7);border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;min-height:40px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;text-transform:uppercase;letter-spacing:.14em;transition:border-color .2s,background .2s,box-shadow .25s,transform .12s,color .2s}
+.btn:hover{border-color:var(--line2);background:rgba(20,34,64,.8)}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.primary{background:linear-gradient(180deg,#f4f9ff,#bfe0ff);color:#031024;border-color:transparent;font-weight:700;box-shadow:0 0 0 1px rgba(255,255,255,.4),0 8px 28px rgba(90,160,255,.35)}
+.btn.primary:hover{box-shadow:0 0 0 1px #fff,0 10px 36px rgba(110,180,255,.55);background:linear-gradient(180deg,#fff,#d2e9ff)}
+.btn.ghost{background:transparent}
+.btn.ice{color:var(--ice2);border-color:rgba(124,196,255,.4);background:rgba(40,90,170,.14)}
+.btn.ice:hover{box-shadow:var(--glow)}
+.btn.on{background:rgba(124,196,255,.16);border-color:var(--ice);color:#fff;box-shadow:var(--glow)}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+select{width:100%;appearance:none;-webkit-appearance:none;padding-right:34px;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%237cc4ff' stroke-width='1.6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+select:hover{border-color:var(--line2)}
+select option{background:#0a1224;color:var(--ink)}
+input[type=text]::placeholder{color:var(--dim)}
+input[type=range]{accent-color:var(--ice)}
+.kbd{display:inline-block;font-size:9.5px;min-width:18px;text-align:center;padding:1px 5px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;color:var(--ice2);margin:0 1px}
+
+/* ---------- stage ---------- */
+#stage{position:relative;overflow:hidden;background:var(--bg);min-height:360px}
 #map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
 #map.drag{cursor:grabbing}
-.cn{position:absolute;width:22px;height:22px;border:1px solid var(--line2);pointer-events:none}
-.cn.a{left:10px;top:10px;border-right:0;border-bottom:0}.cn.b{right:10px;top:10px;border-left:0;border-bottom:0}
-.cn.c{left:10px;bottom:10px;border-right:0;border-top:0}.cn.d{right:10px;bottom:10px;border-left:0;border-top:0}
-.ticks{position:absolute;right:10px;top:25%;bottom:25%;width:7px;pointer-events:none;background:repeating-linear-gradient(180deg,var(--line2) 0 1px,transparent 1px 9px)}
-.tag{position:absolute;top:22px;padding:7px 11px;background:rgba(0,0,0,.82);border:1px solid var(--line);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
-#tagA{left:22px;border-left:2px solid var(--down)}
-#tagB{right:74px;border-left:2px solid var(--up)}
-#swipe{position:absolute;top:0;bottom:0;width:1px;background:#fff}
-#knob{position:absolute;top:50%;left:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:#000;color:#fff;border:1px solid #fff;font-size:15px;cursor:ew-resize;touch-action:none;min-height:0;padding:0;letter-spacing:0}
-.zoom{position:absolute;right:22px;top:22px;display:grid;gap:5px}
-.zoom button{width:40px;height:40px;min-height:0;padding:0;background:rgba(0,0,0,.82);font-size:15px;letter-spacing:0}
-.layers{position:absolute;left:22px;bottom:44px;max-width:calc(100% - 44px);display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:rgba(0,0,0,.82);border:1px solid var(--line);padding:6px 10px;font:10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
-.layers select{width:auto;min-height:28px;padding:3px 8px}
-.layers input[type=range]{width:86px;accent-color:#fff}
-.layers input[type=checkbox]{accent-color:#fff;vertical-align:-2px}
-#hudtxt{position:absolute;left:22px;right:22px;bottom:18px;display:flex;justify-content:space-between;gap:12px;font-size:10px;letter-spacing:.12em;color:#b9bec6;text-transform:uppercase;pointer-events:none;text-shadow:0 1px 2px #000}
-#busy{position:absolute;left:50%;top:22px;transform:translateX(-50%);background:#000;border:1px solid var(--line2);padding:8px 14px;font:10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;max-width:70%;text-align:center}
-#busy.err{border-color:#e06565;color:#ffb9b9}
-/* hero */
-#hero{position:absolute;inset:0;display:flex;align-items:center;padding:0 clamp(22px,7vw,96px);background:linear-gradient(90deg,rgba(0,0,0,.96) 0,rgba(0,0,0,.82) 38%,rgba(0,0,0,.25) 72%,rgba(0,0,0,0) 100%);transition:opacity .45s}
-#hero.off{opacity:0;pointer-events:none}
-#hero .in{max-width:600px}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
-.chip{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:#c9cdd3;border:1px solid var(--line);padding:6px 9px;background:rgba(255,255,255,.03)}
-#hero h1{font:500 clamp(34px,5vw,58px)/1.04 var(--sans);letter-spacing:-.025em;margin:0}
-#hero h1 i{display:block;color:#6f747c;font-weight:400}
-#hero p{font-size:15.5px;color:#b9bec6;max-width:470px;margin:20px 0 26px}
+#stage:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 90% at 50% 45%,transparent 60%,rgba(0,2,8,.55) 100%)}
+.cn{position:absolute;width:22px;height:22px;border:1px solid var(--line2);pointer-events:none;z-index:2}
+.cn.a{left:12px;top:12px;border-right:0;border-bottom:0}.cn.b{right:12px;top:12px;border-left:0;border-bottom:0}
+.cn.c{left:12px;bottom:12px;border-right:0;border-top:0}.cn.d{right:12px;bottom:12px;border-left:0;border-top:0}
+#prog{position:absolute;left:0;top:0;height:2px;width:0;background:linear-gradient(90deg,transparent,var(--ice),#fff);box-shadow:0 0 12px var(--ice);transition:width .4s,opacity .6s;z-index:4}
+.tag{position:absolute;top:24px;z-index:3;padding:8px 12px;background:rgba(4,8,20,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:8px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
+.tag i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:9px;vertical-align:0}
+#tagA{left:24px}#tagA i{background:var(--down);box-shadow:0 0 10px var(--down)}
+#tagB{right:78px}#tagB i{background:var(--up);box-shadow:0 0 10px var(--up)}
+#swipe{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:linear-gradient(180deg,transparent,#fff 12%,#fff 88%,transparent);box-shadow:0 0 14px rgba(124,196,255,.9);z-index:3}
+#knob{position:absolute;top:50%;left:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(4,10,24,.9);color:#fff;border:1.5px solid #fff;cursor:ew-resize;touch-action:none;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px rgba(124,196,255,.12),0 0 26px rgba(124,196,255,.6)}
+#knob svg{width:20px;height:20px}
+.tools{position:absolute;right:22px;top:24px;display:grid;gap:6px;z-index:3}
+.tools .btn{width:42px;height:42px;min-height:0;padding:0;background:rgba(4,8,20,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.tools hr{border:0;height:1px;background:var(--line);margin:2px 6px}
+.layers{position:absolute;left:24px;bottom:50px;z-index:3;max-width:calc(100% - 48px);display:flex;flex-wrap:wrap;gap:12px;align-items:center;background:rgba(4,8,20,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;padding:7px 12px;font:10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.layers select{width:auto;min-height:30px;padding:4px 30px 4px 10px;border-radius:8px}
+.layers input[type=range]{width:90px}
+.layers .chk{display:flex;align-items:center;gap:7px;cursor:pointer}
+.layers input[type=checkbox]{accent-color:var(--ice);width:14px;height:14px;margin:0}
+#legend{position:absolute;right:22px;bottom:50px;z-index:3;width:250px;background:rgba(4,8,20,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;padding:11px 13px 9px;font:9.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+#legend .bar{height:8px;border-radius:4px;margin:8px 0 6px;background:linear-gradient(90deg,#4aa8ff,#1d3d66 38%,#4a4f5a 45%,#4a4f5a 55%,#6b4a1e 62%,#ffa62b)}
+#legend .lab{display:flex;justify-content:space-between}
+#hudtxt{position:absolute;left:24px;right:24px;bottom:20px;z-index:3;display:flex;justify-content:space-between;gap:12px;font-size:9.5px;letter-spacing:.12em;color:#aab6cc;text-transform:uppercase;pointer-events:none;text-shadow:0 1px 2px #000}
+#busy{position:absolute;left:50%;top:24px;z-index:4;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:rgba(4,8,20,.9);border:1px solid var(--line2);border-radius:999px;padding:8px 16px;font:10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;max-width:70%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+#busy:before{content:"";width:12px;height:12px;flex:none;border-radius:50%;border:2px solid rgba(124,196,255,.25);border-top-color:var(--ice);animation:spin .8s linear infinite}
+#busy.err{border-color:#e06565;color:#ffc3c3}#busy.err:before{border-color:#e06565;animation:none;content:"!";border:0;width:auto;height:auto;font-weight:700}
+#busy.ok:before{animation:none;border:0;width:auto;height:auto;content:"\2713";color:var(--ice)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- hero ---------- */
+#hero{position:absolute;inset:0;z-index:6;display:flex;align-items:center;padding:0 clamp(24px,7vw,104px);background:radial-gradient(90% 120% at 78% 50%,#0a1a3d 0,#040a1c 45%,#02040a 80%);transition:opacity .55s,transform .55s}
+#hero.off{opacity:0;pointer-events:none;transform:scale(1.02)}
+#fx{position:absolute;inset:0;width:100%;height:100%}
+#hero:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(2,4,10,.92) 0,rgba(2,4,10,.6) 36%,transparent 62%)}
+#hero .in{position:relative;z-index:1;max-width:620px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
+.chip{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:#cfdcf5;border:1px solid var(--line2);border-radius:999px;padding:6px 11px;background:rgba(124,196,255,.06)}
+.chip.live{color:#fff;border-color:rgba(124,196,255,.55)}
+.chip.live:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#5dff9e;box-shadow:0 0 8px #5dff9e;margin-right:8px;vertical-align:1px;animation:pulse 2s infinite}
+@keyframes pulse{50%{opacity:.35}}
+#hero h1{font:500 clamp(36px,5.2vw,64px)/1.02 var(--sans);letter-spacing:-.03em;margin:0;background:linear-gradient(180deg,#fff 30%,#a9d2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#hero h1 i{display:block;font-style:normal;font-weight:400;background:linear-gradient(90deg,#7cc4ff,#c7a8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#hero p{font-size:16px;color:#b6c3dc;max-width:480px;margin:22px 0 28px}
 #hero .cta{display:flex;flex-wrap:wrap;gap:10px}
-/* panel */
-#panel{border-left:1px solid var(--line);overflow-y:auto;background:#000}
-#panel section{padding:18px 20px 20px;border-bottom:1px solid var(--line)}
-.k{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--mut);margin:0 0 13px}
-.k b{color:var(--ink);font-weight:500}
+#hero .cta .btn{min-height:48px;padding:0 20px}
+.facts{display:flex;gap:30px;margin-top:40px;padding-top:22px;border-top:1px solid var(--line)}
+.facts div{font:10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.facts b{display:block;font:500 22px var(--sans);letter-spacing:-.01em;color:var(--ink);text-transform:none;margin-bottom:4px}
+
+/* ---------- panel ---------- */
+#panel{border-left:1px solid var(--line);overflow-y:auto;background:linear-gradient(180deg,#040814,var(--panel) 30%);scrollbar-width:thin;scrollbar-color:#1e2a44 transparent}
+#panel section{padding:20px 22px 22px;border-bottom:1px solid var(--line)}
+.k{display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--mut);margin:0 0 14px}
+.k span:first-child{display:flex;align-items:center;gap:10px}
+.k .num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;border:1px solid rgba(124,196,255,.45);color:var(--ice2);font-size:9.5px;letter-spacing:0;box-shadow:0 0 12px rgba(80,150,255,.25)}
+.k b{color:var(--ink);font-weight:500;letter-spacing:.12em}
 p{margin:0 0 8px}
 .row{display:flex;gap:6px;margin-top:6px}
-.row input{flex:1;min-width:0;text-transform:none;letter-spacing:.04em}
+.row input{flex:1;min-width:0;letter-spacing:.04em}
+.row .btn{padding:0 12px}
 .hint{color:var(--mut);font-size:12.5px;margin:10px 0 0}
 .ab{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.ab label,.ctl label{display:block;font:10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
-.ab select,.ctl select{margin-top:6px}
-.tl{position:relative;height:40px;margin:16px 6px 0}
-.tl:before{content:"";position:absolute;left:0;right:0;top:9px;height:1px;background:var(--line2)}
-.tl button{position:absolute;top:2px;width:15px;height:15px;min-height:0;margin-left:-7px;padding:0;border-radius:50%;background:#000;border:1px solid #666}
-.tl button.ok{border-color:#fff}
-.tl button.a{background:var(--down);border-color:var(--down)}
-.tl button.b{background:var(--up);border-color:var(--up)}
-.tl span{position:absolute;top:24px;font:9.5px var(--mono);letter-spacing:.1em;color:var(--mut);text-transform:uppercase;white-space:nowrap}
-.modes{display:grid;grid-template-columns:repeat(3,1fr);margin-top:12px}
-.modes button{border-right-width:0;font-size:10.5px}
-.modes button:last-child{border-right-width:1px}
-.modes button[aria-pressed=true]{background:var(--ink);color:#000;border-color:var(--ink);font-weight:700}
-.wide{width:100%;margin-top:6px}
-.ctl{display:grid;gap:12px}
-.ctl input[type=range]{width:100%;accent-color:#fff;margin-top:6px}
-.legend{display:flex;gap:16px;font:10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#c9cdd3;flex-wrap:wrap}
-.sw{display:inline-block;width:10px;height:10px;margin-right:7px;vertical-align:-1px}
-.stats{font-size:13.5px;margin-top:12px;color:#d7dae0}
-.stats b{font-family:var(--mono);font-weight:500}
-#hot{list-style:none;margin:12px 0 0;padding:0;border-top:1px solid var(--line)}
-#hot li{border-bottom:1px solid var(--line)}
-#hot button{width:100%;display:grid;grid-template-columns:22px 58px 1fr auto;gap:8px;align-items:center;border:0;text-align:left;padding:8px 2px;letter-spacing:.06em;min-height:36px;text-transform:none}
-#hot button:hover{background:rgba(255,255,255,.05)}
+.lbl{display:flex;align-items:center;gap:8px;font:10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.lbl i{width:8px;height:8px;border-radius:50%}
+.ab select,.ctl select{margin-top:7px}
+.tl{position:relative;height:44px;margin:18px 8px 0}
+.tl:before{content:"";position:absolute;left:0;right:0;top:9px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(124,196,255,.15),rgba(124,196,255,.45),rgba(124,196,255,.15))}
+.tl .rng{position:absolute;top:8px;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--down),var(--up));box-shadow:0 0 10px rgba(124,196,255,.5)}
+.tl button{position:absolute;top:2px;width:16px;height:16px;margin-left:-8px;padding:0;border-radius:50%;background:var(--bg);border:1.5px solid #3c4a66;cursor:pointer;transition:transform .15s,border-color .2s}
+.tl button:hover{transform:scale(1.3)}
+.tl button.ok{border-color:#cfe4ff}
+.tl button.a{background:var(--down);border-color:var(--down);box-shadow:0 0 12px var(--down)}
+.tl button.b{background:var(--up);border-color:var(--up);box-shadow:0 0 12px var(--up)}
+.tl button.cur{transform:scale(1.25)}
+.tl span{position:absolute;top:26px;font:9.5px var(--mono);letter-spacing:.1em;color:var(--mut);text-transform:uppercase;white-space:nowrap}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:14px;padding:4px;border:1px solid var(--line);border-radius:12px;background:rgba(10,18,36,.6)}
+.seg button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:38px;border:0;border-radius:8px;background:transparent;color:var(--mut);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:background .2s,color .2s,box-shadow .25s}
+.seg button:hover{color:var(--ink);background:rgba(124,196,255,.07)}
+.seg button[aria-pressed=true]{background:linear-gradient(180deg,#eaf4ff,#bcdcff);color:#041228;font-weight:700;box-shadow:0 4px 18px rgba(90,160,255,.35)}
+.wide{width:100%;margin-top:8px}
+.ctl{display:grid;gap:14px}
+.ctl label{display:block}
+.slider{display:flex;justify-content:space-between;align-items:baseline}
+.slider output{font:500 13px var(--mono);color:var(--ice2)}
+.ctl input[type=range]{width:100%;margin-top:8px}
+.legend2{display:flex;gap:16px;font:10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#c9d4ea;flex-wrap:wrap}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:7px;vertical-align:-1px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(10,18,36,.55)}
+.kpi b{display:block;font:500 28px/1 var(--sans);letter-spacing:-.02em}
+.kpi small{display:block;font:9.5px/1.5 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-top:8px}
+.kpi.up b{color:var(--up);text-shadow:0 0 18px rgba(255,166,43,.35)}.kpi.down b{color:var(--down);text-shadow:0 0 18px rgba(74,168,255,.4)}
+.stats{font-size:12.5px;margin-top:12px;color:var(--mut)}
+.stats b{font-family:var(--mono);font-weight:500;color:var(--ink)}
+.empty{display:flex;align-items:center;gap:12px;margin-top:14px;padding:14px;border:1px dashed var(--line2);border-radius:12px;color:var(--mut);font-size:12.5px}
+#hot{list-style:none;margin:12px 0 0;padding:0}
+#hot li+li{margin-top:4px}
+#hot button{width:100%;display:grid;grid-template-columns:30px 54px 1fr 18px;gap:8px;align-items:center;border:1px solid transparent;border-radius:9px;background:rgba(10,18,36,.45);color:var(--ink);text-align:left;padding:8px 10px;font:11px var(--mono);letter-spacing:.06em;cursor:pointer;transition:border-color .2s,background .2s}
+#hot button:hover{border-color:var(--line2);background:rgba(20,34,64,.7)}
 #hot .n{color:var(--dim)}
-#chart{width:100%;height:236px;display:block;margin-top:4px}
-#insight{font-size:13px;color:#d7dae0;margin-top:10px}
-.prov{font:10.5px/1.6 var(--mono);color:var(--mut);word-break:break-all}
-.prov a,.more a{color:var(--ink)}
-details{border-bottom:1px solid var(--line);padding:14px 20px}
-summary{cursor:pointer;font:10px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--ink)}
-.more{font-size:13px;color:#c2c6cd}
+#chartwrap{position:relative;margin-top:6px}
+#chart{width:100%;height:250px;display:block}
+#tip{position:absolute;pointer-events:none;background:rgba(4,8,20,.95);border:1px solid var(--line2);border-radius:8px;padding:7px 9px;font:10px/1.55 var(--mono);color:var(--ink);white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+#insight{font-size:13px;color:#d4ddef;margin-top:10px;padding:12px 14px;border-left:2px solid var(--ice);background:rgba(124,196,255,.05);border-radius:0 10px 10px 0}
+#insight:empty{display:none}
+.prov{font:10.5px/1.65 var(--mono);color:var(--mut);word-break:break-all}
+.prov a,.more a{color:var(--ice2)}
+details{border-bottom:1px solid var(--line);padding:15px 22px}
+summary{cursor:pointer;font:10px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--ink);list-style:none;display:flex;justify-content:space-between;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary:after{content:"+";font-size:15px;color:var(--ice)}
+details[open] summary:after{content:"\2212"}
+.more{font-size:13px;color:#c2cbe0}
 .more ul{padding-left:16px;margin:12px 0 2px}
 .more li{margin-bottom:7px}
-.foot{padding:16px 20px 26px;color:var(--dim);font:10px/1.7 var(--mono);letter-spacing:.1em;text-transform:uppercase}
-#status{grid-column:1/-1;display:flex;gap:26px;align-items:center;padding:0 18px;border-top:1px solid var(--line);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);white-space:nowrap;overflow:hidden}
-#status b{color:#b9bec6;font-weight:400}
+.foot{padding:18px 22px 28px;color:var(--dim);font:10px/1.8 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.foot .keys{margin-top:12px;color:var(--mut);text-transform:none;letter-spacing:.04em}
+#status{grid-column:1/-1;display:flex;gap:26px;align-items:center;padding:0 18px;border-top:1px solid var(--line);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);white-space:nowrap;overflow:hidden;background:#02040a}
+#status b{color:#b3c0d8;font-weight:400}
+#status .ok{color:#5dff9e}
+#toast{position:fixed;left:50%;bottom:52px;transform:translate(-50%,20px);opacity:0;z-index:20;background:rgba(6,12,28,.96);border:1px solid var(--line2);border-radius:12px;padding:11px 16px;font:11px var(--mono);letter-spacing:.08em;box-shadow:0 12px 40px rgba(0,0,0,.5),var(--glow);transition:opacity .25s,transform .25s;pointer-events:none;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+#toast.show{opacity:1;transform:translate(-50%,0)}
 [hidden]{display:none!important}
-@media (max-width:960px){
+@media (max-width:980px){
   #app{grid-template-columns:1fr;grid-template-rows:56px auto auto auto;height:auto}
-  #stage{height:68vh}#panel{border-left:0;border-top:1px solid var(--line)}nav{display:none}#top{justify-content:space-between}
-  #hudtxt{display:none}.layers{bottom:14px}#status{flex-wrap:wrap;height:auto;padding:8px 18px;gap:6px 18px;white-space:normal}
-  #hero{background:rgba(0,0,0,.84)}
+  #stage{height:70vh;height:70svh}
+  #panel{border-left:0;border-top:1px solid var(--line)}
+  nav,.logo small{display:none}#top{justify-content:space-between}
+  #hudtxt,#legend,.cn{display:none}
+  .layers{left:12px;bottom:12px;max-width:calc(100% - 24px);gap:8px;padding:6px 8px}
+  .layers input[type=range]{width:64px}
+  .tools{right:12px;top:12px}.tools .btn{width:40px;height:40px}
+  #tagA{left:12px;top:12px}#tagB{right:62px;top:12px}
+  .tag{font-size:9.5px;padding:6px 9px}
+  #stage{min-height:620px}
+  #hero{align-items:flex-end;padding-top:20px;padding-bottom:28px;overflow:auto}
+  #hero h1{font-size:38px}#hero p{margin:16px 0 20px}.facts{margin-top:24px;padding-top:16px}.chips{margin-bottom:18px}
+  #hero:after{background:linear-gradient(0deg,rgba(2,4,10,.95) 0,rgba(2,4,10,.7) 50%,transparent 85%)}
+  .facts{gap:18px}.facts b{font-size:18px}
+  #status{flex-wrap:wrap;height:auto;padding:8px 18px;gap:6px 18px;white-space:normal}
+  #busy{max-width:86%;top:60px}
 }
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:420px){.layers label[for=opa],.layers #opa{display:none}#hero p{font-size:15px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 <div id="app">
 <header id="top">
-  <a class="logo" href="#" id="home" aria-label="Aua Jer, start">
-    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M2 17c4-6 7-6 11-2s7 4 11-3" fill="none" stroke="#ec74dc" stroke-width="1.6"/><path d="M2 22c4-5 7-5 11-1s7 3 11-3" fill="none" stroke="#74dd74" stroke-width="1.6"/><circle cx="19" cy="6" r="2.4" fill="#f4f4f2"/><path d="M17 8l-7 7" stroke="#f4f4f2" stroke-width="1" stroke-dasharray="1.5 2.5"/></svg>
-    AUA JER
+  <a class="logo" href="#" id="home" aria-label="Aua Jer, back to start">
+    <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#7cc4ff"/><stop offset="1" stop-color="#c7a8ff"/></linearGradient></defs><rect x=".5" y=".5" width="31" height="31" rx="8" fill="#050b1a" stroke="rgba(124,196,255,.4)"/><path d="M5 20c5-7 9-7 13-2s7 4 10-3" fill="none" stroke="url(#lg)" stroke-width="2.2" stroke-linecap="round"/><path d="M5 25c5-5 9-5 13-1s7 3 10-2" fill="none" stroke="rgba(124,196,255,.45)" stroke-width="1.4" stroke-linecap="round"/><circle cx="23" cy="9" r="2.6" fill="#fff"/></svg>
+    AUA JER <small>NISAR</small>
   </a>
   <nav aria-label="Sections">
     <a href="#" data-go="explore">Explorer</a>
-    <a href="#" data-go="method">Method</a>
+    <a href="#" data-go="method">How to read</a>
     <a href="#" data-go="data">Data</a>
-    <a href="#" data-go="team">Team</a>
+    <a href="#" data-go="team">About</a>
   </nav>
-  <button id="share" class="solid"><span class="dot"></span>Share view</button>
+  <button id="share" class="btn ice" title="Copy a link to exactly this view"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Copy link</button>
 </header>
 
 <main id="stage" aria-label="Map">
-  <canvas id="map"></canvas>
-  <i class="cn a"></i><i class="cn b"></i><i class="cn c"></i><i class="cn d"></i><i class="ticks"></i>
-  <div id="swipe" hidden><button id="knob" aria-label="Drag to compare pass A and pass B">&#8596;</button></div>
+  <canvas id="map" aria-label="Radar map. Drag to pan, scroll to zoom, click to read a point."></canvas>
+  <div id="prog"></div>
+  <i class="cn a"></i><i class="cn b"></i><i class="cn c"></i><i class="cn d"></i>
+  <div id="swipe" hidden><button id="knob" aria-label="Drag to compare pass A and pass B"><svg class="i" viewBox="0 0 24 24"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/></svg></button></div>
   <div id="tagA" class="tag" hidden></div>
   <div id="tagB" class="tag" hidden></div>
-  <div class="zoom">
-    <button id="zin" aria-label="Zoom in">+</button>
-    <button id="zout" aria-label="Zoom out">&minus;</button>
-    <button id="zfit" aria-label="Fit radar footprint" title="Fit radar footprint">&#9635;</button>
-    <button id="snap" aria-label="Save map as PNG" title="Save map as PNG">&#8681;</button>
+  <div class="tools">
+    <button id="zin" class="btn" aria-label="Zoom in" title="Zoom in  (+)"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button id="zout" class="btn" aria-label="Zoom out" title="Zoom out  (−)"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+    <button id="zfit" class="btn" aria-label="Fit radar footprint" title="Fit the radar footprint  (F)"><svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <hr>
+    <button id="snap" class="btn" aria-label="Save map as PNG" title="Save the map as PNG"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
   </div>
   <div class="layers">
     <label for="base">Base</label>
-    <select id="base"><option value="night">NASA Black Marble</option><option value="gibs">NASA Blue Marble</option><option value="osm">OpenStreetMap</option></select>
+    <select id="base"><option value="night">Black Marble</option><option value="gibs">Blue Marble</option><option value="osm">OpenStreetMap</option></select>
     <label for="opa">Radar</label><input id="opa" type="range" min="0" max="100" value="100" aria-label="Radar layer opacity">
-    <label><input id="lab" type="checkbox" checked> Cities</label>
+    <label class="chk"><input id="lab" type="checkbox" checked> Cities</label>
+  </div>
+  <div id="legend" hidden>
+    <div class="lab"><span>Change A &rarr; B</span><span id="lgT">&plusmn;26</span></div>
+    <div class="bar"></div>
+    <div class="lab"><span style="color:var(--down)">Darker</span><span>No change</span><span style="color:var(--up)">Brighter</span></div>
   </div>
   <div id="hudtxt"><span id="coordtxt"></span><span id="att"></span></div>
   <div id="busy" role="status" aria-live="polite" hidden></div>
   <div id="hero">
+    <canvas id="fx" aria-hidden="true"></canvas>
     <div class="in">
-      <div class="chips"><span class="chip">NISAR</span><span class="chip">L-band SAR</span><span class="chip">12-day repeat</span><span class="chip">Open data</span></div>
+      <div class="chips"><span class="chip live" id="liveChip">Live NISAR archive</span><span class="chip">L-band SAR</span><span class="chip">Open data</span></div>
       <h1>The ground moves.<i>Watch it every 12 days.</i></h1>
       <p>Aua Jer compares two NISAR radar passes over any place on Earth, maps what changed on the ground, and checks the weather for a reason.</p>
-      <div class="cta"><button id="start" class="solid"><span class="dot"></span>Start exploring &rarr;</button><button id="howto">How to read radar</button></div>
+      <div class="cta">
+        <button id="start" class="btn primary">Open the explorer <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <button id="howto" class="btn ghost"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>How radar sees the ground</button>
+      </div>
+      <div class="facts">
+        <div><b>24 cm</b>Radar wavelength</div>
+        <div><b>12 days</b>Repeat cycle</div>
+        <div><b id="heroN">&mdash;</b><span id="heroNl">Passes found</span></div>
+      </div>
     </div>
   </div>
 </main>
 
 <aside id="panel">
   <section id="sPlace">
-    <p class="k"><span>01 &mdash; Place</span><b id="kPlace"></b></p>
+    <p class="k"><span><i class="num">01</i>Place</span><b id="kPlace"></b></p>
     <select id="preset" aria-label="Example places"></select>
     <div class="row">
-      <input id="coord" type="text" inputmode="decimal" placeholder="lat, lon   51.13, 71.43" aria-label="Latitude, longitude">
-      <button id="go">Search</button>
-      <button id="here" title="Search NISAR passes at the map centre">Centre</button>
+      <input id="coord" type="text" inputmode="decimal" placeholder="Latitude, longitude" aria-label="Latitude, longitude">
+      <button id="go" class="btn" title="Search NISAR passes at these coordinates"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Search</button>
+      <button id="here" class="btn" aria-label="Search at the map centre" title="Search NISAR passes at the map centre"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
     </div>
     <div class="row"><select id="stack" aria-label="Radar track"></select></div>
     <p id="stackinfo" class="hint"></p>
   </section>
 
   <section>
-    <p class="k"><span>02 &mdash; Two radar passes</span><b id="kLoad"></b></p>
+    <p class="k"><span><i class="num">02</i>Two passes</span><b id="kLoad"></b></p>
     <div class="ab">
-      <label>A / before<select id="selA"></select></label>
-      <label>B / after<select id="selB"></select></label>
+      <label class="lbl" style="display:block"><span class="lbl"><i style="background:var(--down);box-shadow:0 0 8px var(--down)"></i>A &middot; Before</span><select id="selA"></select></label>
+      <label class="lbl" style="display:block"><span class="lbl"><i style="background:var(--up);box-shadow:0 0 8px var(--up)"></i>B &middot; After</span><select id="selB"></select></label>
     </div>
     <div id="tl" class="tl" aria-label="Timeline of passes. Click a dot to set B, Shift-click to set A."></div>
-    <div class="modes">
-      <button data-mode="single" aria-pressed="false">Single</button>
-      <button data-mode="swipe" aria-pressed="true">Swipe A|B</button>
-      <button data-mode="change" aria-pressed="false">Change</button>
+    <div class="seg" role="group" aria-label="View">
+      <button data-mode="single" aria-pressed="false" title="Show pass B only  (1)"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>One pass</button>
+      <button data-mode="swipe" aria-pressed="true" title="Drag a divider between A and B  (2)"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 4v16"/></svg>Swipe</button>
+      <button data-mode="change" aria-pressed="false" title="Map what changed from A to B  (3)"><svg class="i" viewBox="0 0 24 24"><path d="M4 17l5-5 4 4 7-8"/><path d="M15 8h5v5"/></svg>Change</button>
     </div>
-    <button id="play" class="wide">&#9654; Play the dance</button>
-    <p class="hint"><b style="color:var(--hh)">Magenta</b> is HH, <b style="color:var(--hv)">green</b> is HV. Same track and frame each time, so the viewing geometry does not change between passes.</p>
+    <button id="play" class="btn wide" title="Animate every pass in order  (Space)"><svg class="i" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>Play all passes</button>
+    <p class="hint"><b style="color:var(--hh)">Magenta</b> is HH, <b style="color:var(--hv)">green</b> is HV. All passes come from one track and frame, so the radar looks at the ground from the same angle every time.</p>
   </section>
 
   <section>
-    <p class="k"><span>03 &mdash; What changed, A &rarr; B</span></p>
+    <p class="k"><span><i class="num">03</i>What changed</span><b id="kPair"></b></p>
     <div class="ctl">
-      <label>Channel<select id="band"><option value="mix">HH + HV together</option><option value="hh">HH only: surface, moisture, buildings</option><option value="hv">HV only: vegetation volume</option></select></label>
-      <label>Flag changes above <output id="thrv">26</output> of 255<input id="thr" type="range" min="8" max="90" value="26"></label>
-      <div class="legend"><span><i class="sw" style="background:var(--up)"></i>Echo brighter</span><span><i class="sw" style="background:var(--down)"></i>Echo darker</span></div>
+      <label><span class="lbl">Channel</span><select id="band"><option value="mix">HH + HV together</option><option value="hh">HH &mdash; surface, moisture, buildings</option><option value="hv">HV &mdash; vegetation</option></select></label>
+      <label><span class="slider"><span class="lbl">Sensitivity threshold</span><output id="thrv">26</output></span><input id="thr" type="range" min="8" max="90" value="26" aria-label="Flag changes larger than this many browse units"></label>
+      <div class="legend2"><span><i class="sw" style="background:var(--up)"></i>Echo brighter</span><span><i class="sw" style="background:var(--down)"></i>Echo darker</span></div>
     </div>
-    <p id="stats" class="stats">Open the Change view to compute it.</p>
+    <div id="stats"></div>
     <ol id="hot" aria-label="Strongest change hotspots"></ol>
   </section>
 
   <section>
-    <p class="k"><span>04 &mdash; Ask a point</span><b id="kPt"></b></p>
-    <p class="hint" id="pthint" style="margin-top:0">Click anywhere on the radar image. You get the radar echo of that spot in every pass, measured against the scene median, plus NASA POWER temperature and rain for the same coordinates.</p>
-    <canvas id="chart" hidden></canvas>
+    <p class="k"><span><i class="num">04</i>Ask a point</span><b id="kPt"></b></p>
+    <div class="empty" id="pthint"><svg class="i" viewBox="0 0 24 24" style="width:22px;height:22px;color:var(--ice)"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg><span>Click anywhere on the radar image. You get that spot's echo in every pass, with NASA POWER rain and temperature underneath.</span></div>
+    <div id="chartwrap" hidden><canvas id="chart"></canvas><div id="tip" hidden></div></div>
     <p id="insight"></p>
-    <button id="csv" class="wide" hidden>&#8681; Download this point as CSV</button>
+    <button id="csv" class="btn wide" hidden><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Download CSV</button>
   </section>
 
   <section>
-    <p class="k"><span>05 &mdash; Provenance</span></p>
+    <p class="k"><span><i class="num">05</i>Sources on screen</span></p>
     <div id="prov" class="prov">No passes loaded yet.</div>
   </section>
 
@@ -238,18 +343,20 @@ summary{cursor:pointer;font:10px var(--mono);letter-spacing:.22em;text-transform
       <li>Next step: read the full-resolution GCOV HDF5 products for calibrated gamma-nought, and add ground readings from the Aua phone-barometer network.</li>
     </ul></div>
   </details>
-  <div class="foot" id="team">Team Aua &middot; Astana, Kazakhstan<br>NASA Space Apps Challenge 2026 &middot; Dancing with the SARs<br>Not affiliated with or endorsed by NASA</div>
+  <div class="foot" id="team">Team Aua &middot; Astana, Kazakhstan<br>NASA Space Apps Challenge 2026 &middot; Dancing with the SARs<br>Not affiliated with or endorsed by NASA
+    <div class="keys">Keys: <span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span> view &middot; <span class="kbd">&larr;</span><span class="kbd">&rarr;</span> pass B &middot; <span class="kbd">Space</span> play &middot; <span class="kbd">F</span> fit &middot; <span class="kbd">+</span><span class="kbd">&minus;</span> zoom</div>
+  </div>
 </aside>
 
 <footer id="status">
   <span>UTC <b id="stTime">--:--:--</b></span>
-  <span>Archive <b id="stLink">ASF DAAC</b></span>
+  <span>Archive <b id="stLink">connecting</b></span>
   <span>Stack <b id="stStack">--</b></span>
   <span>Passes <b id="stLoad">0 / 0</b></span>
   <span>Weather <b>NASA POWER</b></span>
 </footer>
 </div>
-
+<div id="toast" role="status" aria-live="polite"></div>
 <script>
 (function(){
 'use strict';
@@ -284,7 +391,16 @@ function ilat(y){return Math.atan(Math.sinh(Math.PI*(1-2*y)))*180/Math.PI;}
 function fmtDay(t){return new Date(t).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});}
 function ymd(ms){var d=new Date(ms);return ''+d.getUTCFullYear()+('0'+(d.getUTCMonth()+1)).slice(-2)+('0'+d.getUTCDate()).slice(-2);}
 function ll(lat,lon){return Math.abs(lat).toFixed(3)+'°'+(lat<0?'S':'N')+' '+Math.abs(lon).toFixed(3)+'°'+(lon<0?'W':'E');}
-function busy(msg,err){var b=$('busy');if(!msg){b.hidden=true;return;}b.hidden=false;b.textContent=msg;b.className=err?'err':'';}
+var busyT=0;
+function busy(msg,err){var b=$('busy');clearTimeout(busyT);if(!msg){b.hidden=true;return;}b.hidden=false;b.textContent=msg;b.className=err?'err':'';if(err)busyT=setTimeout(function(){b.hidden=true;},6000);}
+var toastT=0;
+function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('show');},2200);}
+var IC={
+  play:'<svg class="i" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>',
+  stop:'<svg class="i" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>',
+  go:'<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+};
+function statsEmpty(msg){$('stats').innerHTML='<div class="empty"><svg class="i" viewBox="0 0 24 24" style="width:22px;height:22px;color:var(--ice)"><path d="M4 17l5-5 4 4 7-8"/><path d="M15 8h5v5"/></svg><span>'+(msg||'Switch to the <b style="color:var(--ink)">Change</b> view to map what changed between A and B.')+'</span></div>';}
 
 /* ---------- NISAR search (ASF Search API) ---------- */
 function searchStacks(lon,lat){
@@ -405,7 +521,7 @@ function computeChange(){
 }
 /* Co-register B to A: try whole-pixel shifts up to 2 px and keep the one with the smallest mean HH difference. */
 function bestShift(a,b,g){
-  var best=1e18,bx=0,by=0,dx,dy,i,j,s,n,o,q;
+  var best=1e18,bx=0,by=0,zero=null,dx,dy,i,j,s,n,o,q;
   for(dy=-2;dy<=2;dy++)for(dx=-2;dx<=2;dx++){
     s=0;n=0;
     for(j=4;j<g.H-4;j+=7)for(i=4;i<g.W-4;i+=7){
@@ -413,8 +529,9 @@ function bestShift(a,b,g){
       if(a[o+3]<128||b[q+3]<128)continue;
       s+=Math.abs(b[q]-a[o]);n++;
     }
-    if(n>500&&s/n<best-1e-9){best=s/n;bx=dx;by=dy;}
+    if(n>500){if(dx===0&&dy===0)zero=s/n;if(s/n<best-1e-9){best=s/n;bx=dx;by=dy;}}
   }
+  if(zero!==null&&best>zero*0.97)return {dx:0,dy:0}; /* keep passes as they are unless a shift clearly helps */
   return {dx:bx,dy:by};
 }
 function findHotspots(){
@@ -438,7 +555,7 @@ function findHotspots(){
   var ol=$('hot');ol.innerHTML='';
   out.forEach(function(c,k){
     var li=document.createElement('li'),b=document.createElement('button');
-    b.innerHTML='<span class="n">0'+(k+1)+'</span><span style="color:var(--'+(c.m>0?'up':'down')+')">'+(c.m>0?'+':'−')+Math.abs(c.m).toFixed(0)+'</span><span>'+ll(c.lat,c.lon)+'</span><span class="n">go →</span>';
+    b.innerHTML='<span class="n">0'+(k+1)+'</span><span style="color:var(--'+(c.m>0?'up':'down')+')">'+(c.m>0?'+':'−')+Math.abs(c.m).toFixed(0)+'</span><span>'+ll(c.lat,c.lon)+'</span><span class="n">'+IC.go+'</span>';
     b.title='Fly to this hotspot and read its history';
     b.onclick=function(){flyTo(c.lat,c.lon,9.3);inspect(c.lon,c.lat);};
     li.appendChild(b);ol.appendChild(li);
@@ -463,11 +580,11 @@ function renderChange(){
   if(!ch.canvas){ch.canvas=document.createElement('canvas');ch.canvas.width=g.W;ch.canvas.height=g.H;}
   ch.canvas.getContext('2d').putImageData(out,0,0);
   var pu=100*up/ch.valid,pd=100*down/ch.valid;
-  $('stats').innerHTML='<b style="color:var(--up)">'+pu.toFixed(1)+'%</b> of the overlap got brighter, about <b>'+Math.round(upA).toLocaleString('en-US')+' km²</b>. <b style="color:var(--down)">'+pd.toFixed(1)+'%</b> got darker, about <b>'+Math.round(downA).toLocaleString('en-US')+' km²</b>. Removed first: a scene-wide median shift of <b>'+(ch.med>0?'+':'')+ch.med+'</b> and a pass-to-pass offset of <b>'+ch.sh.dx+', '+ch.sh.dy+' px</b>. Strongest 8 km blocks:';
+  $('stats').innerHTML='<div class="kpis"><div class="kpi up"><b>'+pu.toFixed(1)+'%</b><small>Brighter<br>&asymp; '+Math.round(upA).toLocaleString('en-US')+' km&sup2;</small></div><div class="kpi down"><b>'+pd.toFixed(1)+'%</b><small>Darker<br>&asymp; '+Math.round(downA).toLocaleString('en-US')+' km&sup2;</small></div></div><p class="stats">Share of the overlap that changed by more than <b>'+S.thr+'</b> units, after removing a scene-wide shift of <b>'+(ch.med>0?'+':'')+ch.med+'</b> and a pass offset of <b>'+ch.sh.dx+', '+ch.sh.dy+' px</b>. Strongest 8 km blocks:</p>';
   invalidate();
 }
 function ensureChange(){
-  if(S.a===S.b){S.change=null;S.hot=[];$('hot').innerHTML='';$('stats').textContent='Pick two different passes for A and B.';return Promise.resolve();}
+  if(S.a===S.b){S.change=null;S.hot=[];$('hot').innerHTML='';statsEmpty('Pick two different passes for A and B.');return Promise.resolve();}
   var key=S.a+'|'+S.b+'|'+S.band;
   if(S.change&&S.change.key===key){renderChange();return Promise.resolve();}
   return Promise.all([loadScene(S.a),loadScene(S.b)]).then(function(){computeChange();});
@@ -509,20 +626,26 @@ function draw(){
     var r=gridRect(),A=S.scenes[S.a],B=S.scenes[S.b];
     ctx.imageSmoothingEnabled=(r.w/S.grid.W)<3;
     ctx.globalAlpha=S.opa;
+    if(!dragging&&S.opa>0.2){ctx.shadowColor='rgba(90,160,255,.55)';ctx.shadowBlur=28;}
     if(S.mode==='change'&&S.change&&S.change.canvas){ctx.drawImage(S.change.canvas,r.x,r.y,r.w,r.h);}
     else if(S.mode==='swipe'){
       var sx=S.swipe*VW;
       if(A&&A.canvas){ctx.save();ctx.beginPath();ctx.rect(0,0,sx,VH);ctx.clip();ctx.drawImage(A.canvas,r.x,r.y,r.w,r.h);ctx.restore();}
       if(B&&B.canvas){ctx.save();ctx.beginPath();ctx.rect(sx,0,VW-sx,VH);ctx.clip();ctx.drawImage(B.canvas,r.x,r.y,r.w,r.h);ctx.restore();}
     }else if(B&&B.canvas){ctx.drawImage(B.canvas,r.x,r.y,r.w,r.h);}
-    ctx.globalAlpha=1;ctx.imageSmoothingEnabled=true;
+    ctx.shadowBlur=0;ctx.globalAlpha=1;ctx.imageSmoothingEnabled=true;
     if(S.mode==='change'&&S.change){
       var bw=BS/S.grid.W*r.w,bh=BS/S.grid.H*r.h;
       ctx.font='10px ui-monospace,Menlo,Consolas,monospace';ctx.textBaseline='bottom';ctx.textAlign='left';
       S.hot.forEach(function(c,k){
-        var hx=r.x+c.X*bw,hy=r.y+c.Y*bh;
-        ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.strokeRect(Math.round(hx)-3.5,Math.round(hy)-3.5,Math.round(bw)+7,Math.round(bh)+7);
-        ctx.fillStyle='#fff';ctx.fillText('0'+(k+1),hx-3,hy-6);
+        var x0=Math.round(r.x+c.X*bw)-4.5,y0=Math.round(r.y+c.Y*bh)-4.5,w=Math.max(10,Math.round(bw)+9),h=Math.max(10,Math.round(bh)+9),L=Math.max(5,Math.min(w,h)*0.3);
+        ctx.strokeStyle=c.m>0?'#ffd08a':'#a9d6ff';ctx.lineWidth=1.6;ctx.shadowColor=c.m>0?'rgba(255,166,43,.9)':'rgba(74,168,255,.9)';ctx.shadowBlur=8;
+        ctx.beginPath();
+        ctx.moveTo(x0,y0+L);ctx.lineTo(x0,y0);ctx.lineTo(x0+L,y0);ctx.moveTo(x0+w-L,y0);ctx.lineTo(x0+w,y0);ctx.lineTo(x0+w,y0+L);
+        ctx.moveTo(x0+w,y0+h-L);ctx.lineTo(x0+w,y0+h);ctx.lineTo(x0+w-L,y0+h);ctx.moveTo(x0+L,y0+h);ctx.lineTo(x0,y0+h);ctx.lineTo(x0,y0+h-L);
+        ctx.stroke();ctx.shadowBlur=0;
+        var t='0'+(k+1),tw=ctx.measureText(t).width+8;
+        ctx.fillStyle='rgba(4,8,20,.85)';ctx.fillRect(x0,y0-17,tw,14);ctx.fillStyle='#fff';ctx.fillText(t,x0+4,y0-5);
       });
     }
   }
@@ -537,10 +660,22 @@ function draw(){
   }
   if(S.pt){
     var q=scr(S.pt.lon,S.pt.lat),px=Math.round(q.x)+0.5,py=Math.round(q.y)+0.5;
-    ctx.lineWidth=3;ctx.strokeStyle='#000';ctx.beginPath();ctx.arc(px,py,9,0,7);ctx.stroke();
+    var gr=ctx.createRadialGradient(px,py,0,px,py,30);gr.addColorStop(0,'rgba(124,196,255,.45)');gr.addColorStop(1,'rgba(124,196,255,0)');
+    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(px,py,30,0,7);ctx.fill();
+    ctx.lineWidth=3;ctx.strokeStyle='rgba(0,0,0,.8)';ctx.beginPath();ctx.arc(px,py,9,0,7);ctx.stroke();
     ctx.lineWidth=1.5;ctx.strokeStyle='#fff';ctx.beginPath();ctx.arc(px,py,9,0,7);ctx.moveTo(px-17,py);ctx.lineTo(px-4,py);ctx.moveTo(px+4,py);ctx.lineTo(px+17,py);ctx.moveTo(px,py-17);ctx.lineTo(px,py-4);ctx.moveTo(px,py+4);ctx.lineTo(px,py+17);ctx.stroke();
   }
+  drawScale();
   $('coordtxt').textContent='Lat '+ilat(S.view.cy).toFixed(3)+' · Lon '+ilon(S.view.cx).toFixed(3)+' · Z '+S.view.z.toFixed(1);
+}
+function drawScale(){
+  if(VW<500)return;
+  var lat=ilat(S.view.cy),mpp=40075016.686*Math.cos(lat*Math.PI/180)/(256*Math.pow(2,S.view.z)),target=mpp*110,p=Math.pow(10,Math.floor(Math.log(target)/Math.LN10)),n=target/p,step=n>=5?5:(n>=2?2:1),m=step*p,px=m/mpp;
+  var x=Math.round(VW-24-px)+0.5,y=VH-58.5-(S.mode==='change'?86:0),lbl=m>=1000?(m/1000)+' km':m+' m';
+  ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y-5);ctx.lineTo(x,y);ctx.lineTo(x+px,y);ctx.lineTo(x+px,y-5);ctx.stroke();
+  ctx.strokeStyle='#dbe8ff';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(x,y-5);ctx.lineTo(x,y);ctx.lineTo(x+px,y);ctx.lineTo(x+px,y-5);ctx.stroke();
+  ctx.font='10px "JetBrains Mono",ui-monospace,monospace';ctx.textAlign='right';ctx.textBaseline='bottom';ctx.fillStyle='#dbe8ff';ctx.shadowColor='#000';ctx.shadowBlur=4;
+  ctx.fillText(lbl.toUpperCase(),x+px,y-8);ctx.textAlign='left';ctx.fillText('N \u2191',x,y-8);ctx.shadowBlur=0;
 }
 function invalidate(){if(dirty)return;dirty=true;requestAnimationFrame(draw);}
 function resize(){
@@ -562,7 +697,8 @@ function zoomAt(px,py,dz){
 
 /* ---------- Pointer interaction ---------- */
 var ptrs={},moved=0,pinch=0;
-cv.addEventListener('pointerdown',function(e){cv.setPointerCapture(e.pointerId);ptrs[e.pointerId]={x:e.offsetX,y:e.offsetY};moved=0;pinch=0;});
+var dragging=false,wheelT=0;
+cv.addEventListener('pointerdown',function(e){cv.setPointerCapture(e.pointerId);ptrs[e.pointerId]={x:e.offsetX,y:e.offsetY};moved=0;pinch=0;dragging=true;});
 cv.addEventListener('pointermove',function(e){
   var p=ptrs[e.pointerId];if(!p)return;
   var ids=Object.keys(ptrs),W=256*Math.pow(2,S.view.z);
@@ -578,14 +714,14 @@ cv.addEventListener('pointermove',function(e){
   }
 });
 function endPtr(e){
-  var p=ptrs[e.pointerId];delete ptrs[e.pointerId];cv.classList.remove('drag');
+  var p=ptrs[e.pointerId];delete ptrs[e.pointerId];cv.classList.remove('drag');dragging=Object.keys(ptrs).length>0;invalidate();
   if(p&&moved<5&&e.type==='pointerup'){
     var W=256*Math.pow(2,S.view.z);
     inspect(ilon(S.view.cx+(e.offsetX-VW/2)/W),ilat(S.view.cy+(e.offsetY-VH/2)/W));
   }
 }
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);
-cv.addEventListener('wheel',function(e){e.preventDefault();zoomAt(e.offsetX,e.offsetY,Math.max(-0.6,Math.min(0.6,-e.deltaY*0.0022)));},{passive:false});
+cv.addEventListener('wheel',function(e){e.preventDefault();dragging=true;clearTimeout(wheelT);wheelT=setTimeout(function(){dragging=false;invalidate();},180);zoomAt(e.offsetX,e.offsetY,Math.max(-0.6,Math.min(0.6,-e.deltaY*0.0022)));},{passive:false});
 cv.addEventListener('dblclick',function(e){zoomAt(e.offsetX,e.offsetY,1);});
 $('zin').onclick=function(){zoomAt(VW/2,VH/2,0.75);};
 $('zout').onclick=function(){zoomAt(VW/2,VH/2,-0.75);};
@@ -617,8 +753,8 @@ function readHash(){
 }
 $('share').onclick=function(){
   syncHash();
-  var url=location.href,done=function(){busy('Link to this exact view copied.');setTimeout(function(){busy('');},1800);};
-  try{navigator.clipboard.writeText(url).then(done,function(){busy(url);});}catch(e){busy(url);}
+  var url=location.href,done=function(){toast('Link to this exact view copied');};
+  try{navigator.clipboard.writeText(url).then(done,function(){toast(url);});}catch(e){toast(url);}
 };
 
 /* ---------- Panel: stacks, dates, modes ---------- */
@@ -642,14 +778,16 @@ function renderTimeline(){
   var tl=$('tl');tl.innerHTML='';
   var n=S.scenes.length,ok=0;
   S.scenes.forEach(function(sc){if(sc.ready)ok++;});
-  $('stLoad').textContent=ok+' / '+n;$('kLoad').textContent=n?ok+'/'+n+' loaded':'';
+  $('stLoad').textContent=ok+' / '+n;$('kLoad').textContent=n?ok+' / '+n+' loaded':'';
+  var pg=$('prog');pg.style.width=(n?100*ok/n:0)+'%';pg.style.opacity=(n&&ok===n)?0:1;
   if(!n)return;
   var t0=Date.parse(S.scenes[0].time),t1=Date.parse(S.scenes[n-1].time),span=Math.max(1,t1-t0);
+  if(S.mode!=='single'&&n>1){var xa=(Date.parse(S.scenes[S.a].time)-t0)/span*100,xb=(Date.parse(S.scenes[S.b].time)-t0)/span*100,rg=document.createElement('i');rg.className='rng';rg.style.left=Math.min(xa,xb)+'%';rg.style.width=Math.abs(xb-xa)+'%';tl.appendChild(rg);}
   S.scenes.forEach(function(sc,i){
     var b=document.createElement('button'),x=n===1?50:(Date.parse(sc.time)-t0)/span*100;
     b.style.left=x+'%';b.title=fmtDay(sc.time)+(sc.failed?' (failed to load)':'')+'. Click sets B, Shift-click sets A.';
     b.setAttribute('aria-label','Pass of '+fmtDay(sc.time));
-    b.className=(i===S.a?'a ':'')+(i===S.b?'b ':'')+(sc.ready?'ok':'');
+    b.className=(i===S.a&&S.mode!=='single'?'a ':'')+(i===S.b?'b cur ':'')+(sc.ready?'ok':'');
     b.onclick=function(e){stopPlay();if(e.shiftKey)setAB(i,S.b);else setAB(S.a,i);};
     tl.appendChild(b);
   });
@@ -658,10 +796,11 @@ function renderTimeline(){
 function renderTags(){
   var A=S.scenes[S.a],B=S.scenes[S.b],ta=$('tagA'),tb=$('tagB');
   if(!A||!B){ta.hidden=tb.hidden=true;$('swipe').hidden=true;return;}
-  if(S.mode==='swipe'){ta.hidden=tb.hidden=false;ta.textContent='A / '+fmtDay(A.time);tb.textContent='B / '+fmtDay(B.time);}
-  else if(S.mode==='single'){ta.hidden=true;tb.hidden=false;tb.textContent=fmtDay(B.time);}
-  else{ta.hidden=false;tb.hidden=true;ta.textContent='Change / '+fmtDay(A.time)+' → '+fmtDay(B.time);}
-  $('swipe').hidden=S.mode!=='swipe';
+  if(S.mode==='swipe'){ta.hidden=tb.hidden=false;ta.innerHTML='<i></i>A &middot; '+fmtDay(A.time);tb.innerHTML='<i></i>B &middot; '+fmtDay(B.time);}
+  else if(S.mode==='single'){ta.hidden=true;tb.hidden=false;tb.innerHTML='<i></i>'+fmtDay(B.time);}
+  else{ta.hidden=false;tb.hidden=true;ta.innerHTML='<i></i>Change &middot; '+fmtDay(A.time)+' &rarr; '+fmtDay(B.time);}
+  $('swipe').hidden=S.mode!=='swipe';$('legend').hidden=S.mode!=='change';
+  $('kPair').textContent=S.mode==='change'?(fmtDay(A.time).slice(0,6)+' \u2192 '+fmtDay(B.time).slice(0,6)):'';
 }
 function renderProv(){
   var A=S.scenes[S.a],B=S.scenes[S.b];
@@ -671,8 +810,8 @@ function renderProv(){
 }
 function setMode(m){
   S.mode=m;
-  Array.prototype.forEach.call(document.querySelectorAll('.modes button'),function(b){b.setAttribute('aria-pressed',b.dataset.mode===m?'true':'false');});
-  renderTags();syncHash();return showPasses();
+  Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(b){b.setAttribute('aria-pressed',b.dataset.mode===m?'true':'false');});
+  renderTags();renderTimeline();syncHash();return showPasses();
 }
 function showPasses(){
   var tok=S.token,need=S.mode==='single'?[S.b]:[S.a,S.b];
@@ -685,22 +824,22 @@ function showPasses(){
 }
 function setAB(a,b){
   S.a=a;S.b=b;$('selA').value=a;$('selB').value=b;renderTimeline();renderTags();renderProv();syncHash();
-  if(S.mode!=='change'){S.change=null;S.hot=[];$('hot').innerHTML='';$('stats').textContent='Open the Change view to compute it.';}
+  if(S.mode!=='change'){S.change=null;S.hot=[];$('hot').innerHTML='';statsEmpty();}
   return showPasses().then(function(){drawChart();writeInsight();});
 }
-function stopPlay(){if(S.playing){clearInterval(S.playing);S.playing=null;$('play').innerHTML='&#9654; Play the dance';}}
+function stopPlay(){if(S.playing){clearInterval(S.playing);S.playing=null;$('play').innerHTML=IC.play+'Play all passes';$('play').classList.remove('on');}}
 $('play').onclick=function(){
   if(S.playing){stopPlay();return;}
   if(S.scenes.length<2)return;
-  setMode('single');$('play').innerHTML='&#9632; Stop';
+  setMode('single');$('play').innerHTML=IC.stop+'Stop';$('play').classList.add('on');
   var step=function(){var nx=(S.b+1)%S.scenes.length;loadScene(nx).then(function(){if(!S.playing)return;S.b=nx;$('selB').value=nx;renderTimeline();renderTags();renderProv();drawChart();invalidate();}).catch(function(){});};
   S.playing=setInterval(step,1300);step();
 };
-Array.prototype.forEach.call(document.querySelectorAll('.modes button'),function(b){b.onclick=function(){stopPlay();setMode(b.dataset.mode);};});
+Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(b){b.onclick=function(){stopPlay();setMode(b.dataset.mode);};});
 $('selA').onchange=function(){stopPlay();setAB(+this.value,S.b);};
 $('selB').onchange=function(){stopPlay();setAB(S.a,+this.value);};
 $('band').onchange=function(){S.band=this.value;if(S.mode==='change')showPasses();else S.change=null;};
-$('thr').oninput=function(){S.thr=+this.value;$('thrv').textContent=S.thr;if(S.mode==='change'&&S.change)renderChange();};
+$('thr').oninput=function(){S.thr=+this.value;$('thrv').textContent=S.thr;$('lgT').textContent='\u00b1'+S.thr;if(S.mode==='change'&&S.change)renderChange();};
 $('opa').oninput=function(){S.opa=this.value/100;invalidate();};
 function setBase(v){S.base=v;$('base').value=v;$('att').textContent=BASES[v].att+' · Radar: NISAR (NASA/ISRO) via ASF DAAC';invalidate();}
 $('base').onchange=function(){setBase(this.value);};
@@ -712,7 +851,7 @@ function useStack(i){
   stopPlay();
   var tok=++S.token,want=S.want;S.want=null;
   S.scenes=st.scenes;S.stackKey=st.key;S.change=null;S.hot=[];S.series=[];S.wx=null;S.pt=null;
-  $('stack').value=i;$('hot').innerHTML='';$('chart').hidden=true;$('csv').hidden=true;$('insight').textContent='';$('kPt').textContent='';$('pthint').hidden=false;$('stats').textContent='Open the Change view to compute it.';
+  $('stack').value=i;$('hot').innerHTML='';$('chartwrap').hidden=true;$('csv').hidden=true;$('insight').textContent='';$('kPt').textContent='';$('pthint').hidden=false;statsEmpty();
   $('stStack').textContent='T'+st.path+' / F'+st.frame+' / '+st.dir.slice(0,3);
   busy('Reading footprints of '+st.scenes.length+' passes');
   return Promise.all(st.scenes.map(function(sc){return sc.b?sc.b:sceneBounds(sc).then(function(b){sc.b=b;});})).then(function(){
@@ -744,7 +883,7 @@ function goTo(lat,lon,want){
   $('coord').value=lat.toFixed(3)+', '+lon.toFixed(3);$('kPlace').textContent=ll(lat,lon);
   busy('Searching the NISAR archive at '+ll(lat,lon));
   return searchStacks(lon,lat).then(function(st){
-    S.stacks=st;renderStacks();$('stLink').textContent='ASF DAAC online';
+    S.stacks=st;renderStacks();var tot=0;st.forEach(function(x){tot+=x.scenes.length;});$('heroN').textContent=tot;$('heroNl').textContent='Passes here';$('stLink').innerHTML='<span class="ok">&#9679;</span> ASF DAAC online';
     if(!st.length){S.scenes=[];S.grid=null;renderDates();$('stackinfo').textContent='';flyTo(lat,lon,6);busy('No public NISAR GCOV passes cover this point yet. Try another place.',true);return;}
     var idx=0;
     if(want)st.forEach(function(x,k){if(x.key===want.key)idx=k;});
@@ -786,7 +925,7 @@ function inspect(lon,lat){
   if(i<0||j<0||i>=g.W||j>=g.H){busy('Click inside the radar footprint.',true);setTimeout(function(){busy('');},1600);return;}
   var tok=S.token;
   S.pt={lon:lon,lat:lat,i:i,j:j};S.series=[];S.wx=null;
-  $('pthint').hidden=true;$('chart').hidden=false;$('csv').hidden=false;$('kPt').textContent=ll(lat,lon);
+  $('pthint').hidden=true;$('chartwrap').hidden=false;$('csv').hidden=false;$('kPt').textContent=ll(lat,lon);
   $('insight').textContent='Reading this spot in every pass.';
   invalidate();drawChart();
   var pt=S.pt;
@@ -823,7 +962,7 @@ function writeInsight(){
     else if(ra!==null&&rb!==null&&rb-ra>3&&d>8)hint='More rain before B fits a brighter echo from wetter soil.';
     else if(ra!==null&&rb!==null&&ra-rb>3&&d<-8)hint='More rain before A fits a darker echo at B as the soil dried.';
     else if(ra!==null&&rb!==null&&rb<=ra+1&&dhh>20)hint='HH rose although it was not wetter before B, which points to the surface itself changing, for example tillage after harvest.';
-    else if(dhv<-12&&dhh>-6)hint='HV fell while HH held, which fits less standing vegetation, for example after harvest.';
+    else if(dhv<-12&&dhh>-10)hint='HV fell while HH held, which fits less standing vegetation, for example after harvest.';
     else if(dhv>12&&dhh<6)hint='HV rose while HH held, which fits more vegetation volume.';
     else if(Math.abs(d)<=8)hint='That is within the noise of browse imagery: no clear change here.';
     if(hint)txt+=hint+' A hint, not proof.';
@@ -840,8 +979,27 @@ $('csv').onclick=function(){
   rows.push('# point,'+S.pt.lat.toFixed(4)+','+S.pt.lon.toFixed(4)+',radar: NISAR GCOV browse via ASF DAAC,weather: NASA POWER');
   download('aua-jer-point.csv',new Blob([rows.join('\n')],{type:'text/csv'}));
 };
+var CH={},hoverK=null;
+function chartHover(e){
+  if(!CH.X||!S.scenes.length)return;
+  var rc=$('chart').getBoundingClientRect(),mxp=e.clientX-rc.left,best=null,bd=1e9;
+  S.scenes.forEach(function(sc,k){var d=Math.abs(CH.X(Date.parse(sc.time))-mxp);if(d<bd){bd=d;best=k;}});
+  var tip=$('tip');
+  if(best===null||bd>24||mxp<CH.L-10||mxp>CH.R+10){hoverK=null;CH.hover=undefined;tip.hidden=true;drawChart();return;}
+  hoverK=best;CH.hover=best;
+  var sc=S.scenes[best],s=S.series[best],t=Date.parse(sc.time),r=rainBefore(t,3),m=tminOn(t);
+  function sg(v){return (v>0?'+':'')+v.toFixed(0);}
+  tip.innerHTML='<b>'+fmtDay(sc.time)+'</b><br><span style="color:var(--hh)">HH '+(s?sg(s.hh):'&mdash;')+'</span> &nbsp;<span style="color:var(--hv)">HV '+(s?sg(s.hv):'&mdash;')+'</span><br>'+(r===null?'':'Rain 3 d: '+r.toFixed(1)+' mm<br>')+(m===null?'':'Night min: '+m.toFixed(1)+' \u00b0C');
+  tip.hidden=false;
+  var tx=CH.X(t)+12,tw=tip.offsetWidth;if(tx+tw>CH.w)tx=CH.X(t)-tw-12;
+  tip.style.left=tx+'px';tip.style.top='18px';
+  drawChart();
+}
+$('chart').addEventListener('pointermove',chartHover);
+$('chart').addEventListener('pointerleave',function(){hoverK=null;CH.hover=undefined;$('tip').hidden=true;drawChart();});
+$('chart').addEventListener('click',function(){if(hoverK!==null){stopPlay();setAB(S.a===hoverK?0:S.a,hoverK);}});
 function drawChart(){
-  var c=$('chart');if(c.hidden||!S.scenes.length)return;
+  var c=$('chart');if($('chartwrap').hidden||!S.scenes.length)return;
   var dpr=Math.min(2,window.devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight;
   if(!w)return;
   c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);
@@ -863,12 +1021,18 @@ function drawChart(){
   x.fillStyle='#8b9098';x.textAlign='right';x.fillText((hi>0?'+':'')+hi,L-5,T1+4);x.fillText((lo>0?'+':'')+lo,L-5,B1-3);
   if(lo<0&&hi>0){var y0=Math.round(Y1(0))+0.5;x.strokeStyle='rgba(255,255,255,.45)';x.setLineDash([2,3]);x.beginPath();x.moveTo(L,y0);x.lineTo(R,y0);x.stroke();x.setLineDash([]);}
   x.textAlign='left';x.fillStyle='#c9cdd3';x.fillText('RADAR ECHO VS SCENE MEDIAN',L,T1-10);
-  [['hh','#ec74dc'],['hv','#74dd74']].forEach(function(b){
-    x.strokeStyle=b[1];x.fillStyle=b[1];x.lineWidth=1.6;x.beginPath();var st=false;
+  [['hh','#ec74dc','rgba(236,116,220,'],['hv','#74dd74','rgba(116,221,116,']].forEach(function(b){
+    var pts=[];S.scenes.forEach(function(sc,k){var s=S.series[k];if(s)pts.push([X(Date.parse(sc.time)),Y1(s[b[0]])]);});
+    if(pts.length>1){var g=x.createLinearGradient(0,T1,0,B1);g.addColorStop(0,b[2]+'.28)');g.addColorStop(1,b[2]+'0)');x.fillStyle=g;x.beginPath();x.moveTo(pts[0][0],B1);pts.forEach(function(q){x.lineTo(q[0],q[1]);});x.lineTo(pts[pts.length-1][0],B1);x.closePath();x.fill();}
+    x.shadowColor=b[1];x.shadowBlur=8;
+    x.strokeStyle=b[1];x.fillStyle=b[1];x.lineWidth=1.8;x.beginPath();var st=false;
     S.scenes.forEach(function(sc,k){var s=S.series[k];if(!s)return;var px=X(Date.parse(sc.time)),py=Y1(s[b[0]]);if(st)x.lineTo(px,py);else{x.moveTo(px,py);st=true;}});
     x.stroke();
     S.scenes.forEach(function(sc,k){var s=S.series[k];if(!s)return;x.beginPath();x.arc(X(Date.parse(sc.time)),Y1(s[b[0]]),3,0,7);x.fill();});
+    x.shadowBlur=0;
   });
+  CH={X:X,L:L,R:R,T1:T1,B2:B2,w:w,h:h};
+  if(hoverK!==null){var hs=S.scenes[hoverK];if(hs){var hx=Math.round(X(Date.parse(hs.time)))+0.5;x.strokeStyle='rgba(255,255,255,.7)';x.lineWidth=1;x.beginPath();x.moveTo(hx,T1);x.lineTo(hx,B2);x.stroke();}}
   x.textAlign='right';x.fillStyle='#ec74dc';x.fillText('HH',R-24,T1-10);x.fillStyle='#74dd74';x.fillText('HV',R,T1-10);
   x.textAlign='left';x.fillStyle='#c9cdd3';x.fillText('NASA POWER  AIR TEMP °C',L,T2-10);x.textAlign='right';x.fillStyle='#4aa8ff';x.fillText('RAIN MM/DAY',R,T2-10);
   if(S.wx&&S.wx.length){
@@ -878,7 +1042,7 @@ function drawChart(){
     tl=Math.floor(tl/5)*5;th=Math.ceil(th/5)*5;if(th===tl)th=tl+5;
     var Y2=function(v){return B2-(v-tl)/(th-tl)*(B2-T2);};
     var bw=Math.max(1,(R-L)/((t1-t0)/864e5)-0.5);
-    x.fillStyle='rgba(74,168,255,.6)';
+    x.fillStyle='rgba(74,168,255,.75)';
     S.wx.forEach(function(q){if(q.rain===null||q.rain<=0)return;var bh=q.rain/rm*(B2-T2)*0.9;x.fillRect(X(q.t)-bw/2,B2-bh,bw,bh);});
     x.fillStyle='rgba(255,166,43,.14)';x.beginPath();var first=true;
     S.wx.forEach(function(q){if(q.tmax===null)return;if(first){x.moveTo(X(q.t),Y2(q.tmax));first=false;}else x.lineTo(X(q.t),Y2(q.tmax));});
@@ -894,11 +1058,56 @@ function drawChart(){
 }
 
 /* ---------- Hero, navigation, status line ---------- */
-function enter(){$('hero').classList.add('off');}
+function enter(){$('hero').classList.add('off');fxRun(false);}
+/* Hero background: a slowly turning disc of particles, drawn in code. */
+var FX={on:false,parts:null,raf:0};
+function fxInit(){
+  var c=$('fx'),n=window.innerWidth<700?900:2200,p=[],i,r;
+  for(i=0;i<n;i++){r=Math.pow(Math.random(),0.6);p.push({r:r,a:Math.random()*Math.PI*2,s:(0.0009+0.003*(1-r))*(Math.random()<0.5?1:1.15),z:Math.random(),h:Math.random()});}
+  FX.parts=p;
+}
+function fxFrame(){
+  var c=$('fx'),d=Math.min(2,window.devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight;
+  if(!w){FX.raf=requestAnimationFrame(fxFrame);return;}
+  if(c.width!==Math.round(w*d)){c.width=Math.round(w*d);c.height=Math.round(h*d);}
+  var x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);
+  x.globalCompositeOperation='source-over';x.fillStyle='rgba(2,4,10,.22)';x.fillRect(0,0,w,h);
+  x.globalCompositeOperation='lighter';
+  var cx=w>900?w*0.68:w*0.5,cy=w>900?h*0.5:h*0.34,R=Math.min(w>900?w*0.36:w*0.62,h*0.62),tilt=0.38,rot=-0.35,cr=Math.cos(rot),sr=Math.sin(rot);
+  var core=x.createRadialGradient(cx,cy,0,cx,cy,R*0.35);core.addColorStop(0,'rgba(180,215,255,.10)');core.addColorStop(1,'rgba(40,80,200,0)');x.fillStyle=core;x.beginPath();x.arc(cx,cy,R*0.35,0,7);x.fill();
+  FX.parts.forEach(function(q){
+    q.a+=q.s;var rr=q.r*R,ex=Math.cos(q.a)*rr,ey=Math.sin(q.a)*rr*tilt,px=cx+ex*cr-ey*sr,py=cy+ex*sr+ey*cr,b=0.35+0.65*(1-q.r);
+    var col=q.h<0.72?'rgba(110,175,255,':(q.h<0.9?'rgba(190,225,255,':'rgba(185,150,255,');
+    x.fillStyle=col+(0.25+0.6*b*q.z)+')';var sz=0.6+1.6*q.z*b;x.fillRect(px,py,sz,sz);
+  });
+  x.globalCompositeOperation='source-over';
+  if(FX.on)FX.raf=requestAnimationFrame(fxFrame);
+}
+function fxRun(on){
+  var still=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!FX.parts)fxInit();
+  FX.on=on&&!still;cancelAnimationFrame(FX.raf);
+  if(on){if(still){for(var k=0;k<40;k++)fxFrame();}else FX.raf=requestAnimationFrame(fxFrame);}
+}
+document.addEventListener('keydown',function(e){
+  var t=e.target,tag=t&&t.tagName;
+  if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA'||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(!$('hero').classList.contains('off')){if(e.key==='Enter'){enter();e.preventDefault();}return;}
+  var n=S.scenes.length;
+  if(e.key==='1'){stopPlay();setMode('single');}
+  else if(e.key==='2'){stopPlay();setMode('swipe');}
+  else if(e.key==='3'){stopPlay();setMode('change');}
+  else if(e.key==='ArrowRight'&&n){stopPlay();setAB(S.a,Math.min(n-1,S.b+1));e.preventDefault();}
+  else if(e.key==='ArrowLeft'&&n){stopPlay();setAB(S.a,Math.max(0,S.b-1));e.preventDefault();}
+  else if(e.key===' '&&tag!=='BUTTON'){$('play').click();e.preventDefault();}
+  else if(e.key==='f'||e.key==='F')fit();
+  else if(e.key==='+'||e.key==='=')zoomAt(VW/2,VH/2,0.75);
+  else if(e.key==='-'||e.key==='_')zoomAt(VW/2,VH/2,-0.75);
+});
 $('start').onclick=enter;
 $('howto').onclick=function(){enter();openSec('dMethod');};
 function openSec(id){var d=$(id);d.open=true;d.scrollIntoView({behavior:'smooth',block:'start'});}
-$('home').onclick=function(e){e.preventDefault();$('hero').classList.remove('off');};
+$('home').onclick=function(e){e.preventDefault();stopPlay();$('hero').classList.remove('off');fxRun(true);};
 Array.prototype.forEach.call(document.querySelectorAll('nav a'),function(a){a.onclick=function(e){
   e.preventDefault();enter();
   var g=a.dataset.go;
@@ -912,7 +1121,7 @@ setInterval(tick,1000);tick();
 
 /* ---------- Start ---------- */
 window.addEventListener('resize',function(){resize();drawChart();});
-setBase('night');setSwipe(0.5);resize();
+setBase('night');setSwipe(0.5);resize();statsEmpty();fxRun(true);
 window.AuaJer={state:S,goTo:goTo,setAB:setAB,setMode:setMode,inspect:inspect,fit:fit,flyTo:flyTo,enter:enter};
 var h0=readHash();
 if(h0){enter();goTo(h0.lat,h0.lon,{key:h0.key,a:h0.a,b:h0.b,mode:h0.mode});}
