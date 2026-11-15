@@ -15,6 +15,7 @@ Demo slides (7 pages): [Aua_Jer_demo.pdf](Aua_Jer_demo.pdf)
 - Change map: per-pixel difference of the HH, HV or combined echo between A and B, after aligning the two passes to the nearest pixel and removing the scene-wide median shift. Reports how much area got brighter or darker and lists the six strongest 8 km blocks.
 - Ask a point: click the map to get that spot's echo in every pass (relative to each scene's median), with NASA POWER daily temperature and rain underneath. Downloads as CSV.
 - Every view has a link you can share. Provenance lists the exact NISAR granules on screen.
+- Keyboard: 1, 2, 3 switch the view; left and right arrows step pass B; Space plays all passes; F fits the footprint; + and − zoom.
 
 ## Data
 
