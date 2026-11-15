@@ -4,13 +4,15 @@ NISAR surface-change explorer. Built by Team Aua (Astana, Kazakhstan) for the NA
 
 Live app: https://zholdasbay-tech.github.io/aua-jer/
 
+Demo slides (7 pages): [Aua_Jer_demo.pdf](Aua_Jer_demo.pdf)
+
 *Aua* is Kazakh for air and *Jer* for ground. The app compares two NISAR L-band radar passes over any place on Earth, maps what changed on the ground, and shows NASA POWER weather for the same point so you can look for a reason.
 
 ## What it does
 
 - Searches the public NISAR archive for any coordinates (ASF Search API) and groups the passes by track and frame, so only passes with the same viewing geometry are compared.
 - Shows each pass on a map: single pass, a swipe between pass A and pass B, an animation through all passes, or a change map.
-- Change map: per-pixel difference of the HH, HV or combined echo between A and B, with the scene-wide median shift removed. Reports how much area got brighter or darker and lists the six strongest 8 km blocks.
+- Change map: per-pixel difference of the HH, HV or combined echo between A and B, after aligning the two passes to the nearest pixel and removing the scene-wide median shift. Reports how much area got brighter or darker and lists the six strongest 8 km blocks.
 - Ask a point: click the map to get that spot's echo in every pass (relative to each scene's median), with NASA POWER daily temperature and rain underneath. Downloads as CSV.
 - Every view has a link you can share. Provenance lists the exact NISAR granules on screen.
 
@@ -37,7 +39,7 @@ It is one static file, `index.html`, with no build step and no server code. Open
 
 ## Use of AI
 
-An AI assistant (Claude, by Anthropic) was used to help write and debug the code, the interface text and this README. The team chose the challenge, the idea, the data sources and the test areas, and checked the results against the NASA data. No AI-generated images, audio or video are used, and no NASA logos or mission identifiers.
+An AI assistant (Claude, by Anthropic) wrote most of the application code and helped draft the interface text, this README and the demo slides. The team member chose the challenge and the Aua concept, set the design direction and reviewed the results. All maps and charts in the slides are screenshots of the running app on NASA data. No AI-generated images, audio or video are used, and no NASA logos or mission identifiers.
 
 ## Licence
 
