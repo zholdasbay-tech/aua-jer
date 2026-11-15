@@ -1,6 +1,6 @@
 # Aua Jer
 
-NISAR surface-change explorer. Built by Team Aua (Astana, Kazakhstan) for the NASA Space Apps Challenge 2026, challenge "Dancing with the SARs".
+NISAR surface-change explorer. Built by team Edviller (Astana, Kazakhstan) for the NASA Space Apps Challenge 2026, challenge "Dancing with the SARs".
 
 Live app: https://zholdasbay-tech.github.io/aua-jer/
 
