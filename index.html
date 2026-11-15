@@ -231,6 +231,7 @@ summary{cursor:pointer;font:10px var(--mono);letter-spacing:.22em;text-transform
     <summary>Data and limits</summary>
     <div class="more"><ul>
       <li>Radar: NISAR L2 GCOV browse images (HH and HV), streamed live from NASA's Alaska Satellite Facility DAAC and found with the ASF Search API.</li>
+      <li>Very dark open water can fall below the browse image's lowest value and then shows as no data.</li>
       <li>Browse images are about 200 m per pixel and 8-bit, scaled for display. The change map is a relative difference after removing the scene-wide median and aligning the two passes to the nearest pixel. It is not calibrated backscatter in dB. Point charts are relative to each scene's median for the same reason, so a change across the whole scene cannot be told apart from display scaling.</li>
       <li>Weather: NASA POWER daily values (MERRA-2 and GEOS) at the clicked coordinates. It is a model grid, not a station.</li>
       <li>Base maps: NASA GIBS Black Marble and Blue Marble, or OpenStreetMap. City markers are approximate.</li>
@@ -684,6 +685,7 @@ function showPasses(){
 }
 function setAB(a,b){
   S.a=a;S.b=b;$('selA').value=a;$('selB').value=b;renderTimeline();renderTags();renderProv();syncHash();
+  if(S.mode!=='change'){S.change=null;S.hot=[];$('hot').innerHTML='';$('stats').textContent='Open the Change view to compute it.';}
   return showPasses().then(function(){drawChart();writeInsight();});
 }
 function stopPlay(){if(S.playing){clearInterval(S.playing);S.playing=null;$('play').innerHTML='&#9654; Play the dance';}}
